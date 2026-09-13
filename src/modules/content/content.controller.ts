@@ -62,11 +62,30 @@ export const fetchContent=async(req:Request,res:Response)=>{
 export const deleteContent=async(req:Request,res:Response)=>{
     try {
 
-        
+        const userId=req.userId;
+        const contentId=req.params.contentId;
 
-        
-    } catch (error) {
-        console.error("failed",error);
+        if(!userId){
+            return res.status(400).json({
+                message:"Unauthorized"
+            })
+        };
+
+        const deletedContent= await contentModel.deleteOne({
+            _id:contentId,
+            userId,
+            
+        });
+
+
+        return res.status(200).json({
+            message:"Content Deleted Successfully",
+            deleteContent:deletedContent
+        });
+     } catch (error) {
+        return res.status(500).json({
+            message:`Internal Server Error${error}`
+        })
         
     }
 
