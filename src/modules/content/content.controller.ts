@@ -1,4 +1,4 @@
-import { constrainedMemory } from "process";
+
 import contentModel from "../../models/content.model.js";
 
 import type{Request,Response} from "express";
@@ -37,11 +37,23 @@ export const addContent=async(req:Request,res:Response)=>{
 
 export const fetchContent=async(req:Request,res:Response)=>{
     try {
+        const userId=req.userId;
+        if(!userId){
+            return res.status(401).json({
+                message:"Unauthorized"
+            })
+        }
+        const content=await contentModel.find({
+            userId:userId
+    }).populate("userId","username");
 
-        
+    return res.status(200).json({
+        message:"Here is your content",
+        content:content
+    })
 
-        
-    } catch (error) {
+    
+} catch (error) {
         console.error("failed",error);
         
     }

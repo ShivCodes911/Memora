@@ -15,8 +15,8 @@ const contentSchema=new mongoose.Schema <contentSchemaBody> ({
     link:{type:String,required:true,unique:true},
     type:{type:String,enum:contentType,required:true},
     title:{type:String,required:true},
-    tags:[{type:mongoose.Schema.Types.ObjectId,ref:"tagModel"}],
-    userId:{type:mongoose.Schema.Types.ObjectId,ref:"userModel",required:true}
+    tags:[{type:mongoose.Schema.Types.ObjectId,ref:"Tag"}],
+    userId:{type:mongoose.Schema.Types.ObjectId,ref:"User",required:true}
 });
 
 const contentModel=mongoose.model("Content",contentSchema);
