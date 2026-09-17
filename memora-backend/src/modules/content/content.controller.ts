@@ -33,8 +33,6 @@ export const addContent=async(req:Request,res:Response)=>{
 
 };
 
-
-
 export const fetchContent=async(req:Request,res:Response)=>{
     try {
         const userId=req.userId;
@@ -59,6 +57,7 @@ export const fetchContent=async(req:Request,res:Response)=>{
     }
 
 };
+
 export const deleteContent=async(req:Request,res:Response)=>{
     try {
 
@@ -90,6 +89,7 @@ export const deleteContent=async(req:Request,res:Response)=>{
     }
 
 };
+
 export const shareContent=async(req:Request,res:Response)=>{
     try {
 
@@ -102,12 +102,10 @@ export const shareContent=async(req:Request,res:Response)=>{
     }
 
 };
+
 export const fetchSharedContent=async(req:Request,res:Response)=>{
     try {
 
-        
-
-        
     } catch (error) {
         console.error("failed",error);
         
