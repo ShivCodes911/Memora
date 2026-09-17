@@ -7,7 +7,7 @@ interface linkSchemaBody{
 
 const linkSchema=new mongoose.Schema<linkSchemaBody>({
     hash:{type:String,required:true},
-    userId:{type:mongoose.Schema.Types.ObjectId,ref:"User",required:true}
+    userId:{type:mongoose.Schema.Types.ObjectId,ref:"User",required:true,unique:true}
 
 });
 

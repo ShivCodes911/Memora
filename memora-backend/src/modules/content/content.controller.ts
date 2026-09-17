@@ -2,6 +2,9 @@
 import contentModel from "../../models/content.model.js";
 
 import type{Request,Response} from "express";
+import linkModel from "../../models/link.model.js";
+import { hash } from "../../utils/hashingLink.util.js";
+import userModel from "../../models/user.model.js";
 
 export const addContent=async(req:Request,res:Response)=>{
     try {
@@ -92,6 +95,33 @@ export const deleteContent=async(req:Request,res:Response)=>{
 
 export const shareContent=async(req:Request,res:Response)=>{
     try {
+        const {share}=req.body;
+
+        const userId=req.userId
+
+        if(!userId){
+            return res.status(401).json({
+                message:"Unauthorized"
+            })
+        }
+        const shareHash=hash(10);
+
+        if(share){
+           const link=await linkModel.create({
+                hash:shareHash,
+                userId
+            })
+        }
+        else{
+            await linkModel.deleteOne({
+                userId
+            })
+        }
+
+        return res.status(201).json({
+            message:"Link Created SuccessFully",
+           
+        })
 
         
 
@@ -103,12 +133,3 @@ export const shareContent=async(req:Request,res:Response)=>{
 
 };
 
-export const fetchSharedContent=async(req:Request,res:Response)=>{
-    try {
-
-    } catch (error) {
-        console.error("failed",error);
-        
-    }
-
-};
