@@ -1,8 +1,3 @@
-
-
-
-
-
 // difining the type of Button Component
 
 import type { ReactElement } from "react";
@@ -20,8 +15,8 @@ interface ButtonProps{
 
 
 const variantStyles={
-    "primary":"bg-purple-600 text-white ",
-    "secondary":"bg-purple-200 text-purple-600"
+    "primary":"bg-purple-700 text-white ",
+    "secondary":"bg-purple-200 text-purple-700"
 };
 
 const sizeStyles={
@@ -32,13 +27,11 @@ const sizeStyles={
 }
 
 
-const defaultStyles="rounded-md p-4 flex items-center justify-center"
+const defaultStyles="rounded-md p-4 flex items-center justify-center font-light"
 
 export const Button=(props:ButtonProps)=>{
     return <button className=
-    {`${variantStyles[props.variant]}
-     ${defaultStyles}
-     ${sizeStyles[props.size]} cursor-pointer` }>
+    {`${variantStyles[props.variant]} ${defaultStyles} ${sizeStyles[props.size]} cursor-pointer` }>
         {props.startIcon ? <div className="pr-2">
         {props.startIcon}</div>:null}
         {props.text}
