@@ -10,7 +10,7 @@ interface ButtonProps{
     // do not use any type leave it for the worstCase senario
     startIcon?:ReactElement;      //1. these icons should be optional
     endIcon?:ReactElement;
-    onClick:()=>void;
+    onClick?:()=>void;
 }
 
 
@@ -30,7 +30,7 @@ const sizeStyles={
 const defaultStyles="rounded-md p-4 flex items-center justify-center font-light"
 
 export const Button=(props:ButtonProps)=>{
-    return <button className=
+    return <button onClick={props.onClick} className=
     {`${variantStyles[props.variant]} ${defaultStyles} ${sizeStyles[props.size]} cursor-pointer` }>
         {props.startIcon ? <div className="pr-2">
         {props.startIcon}</div>:null}
