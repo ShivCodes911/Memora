@@ -16,9 +16,9 @@ function App() {
   
   return (
     <div>
-      
+      <Sidebar/>
     
-    <div className='p-4'>
+    <div className=' p-4 ml-64 min-h-screen bg-gray-100 ' >
       <CreateContentModal open={modalOpen} onClose={()=>{
         setModalOpen(false)
       }}/>

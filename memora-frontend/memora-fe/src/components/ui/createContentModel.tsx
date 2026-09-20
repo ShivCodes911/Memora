@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { CrossIcon } from "../../icons/crossIcon";
 import { Button } from "./Button";
 
@@ -16,6 +15,7 @@ export function CreateContentModal(props:ContentModalProps){
         {/* apprear thsi div only when the open is true */}
        {props.open && <div className="w-screen h-screen bg-slate-500 fixed top-0 left-0 opacity-60 flex justify-center"  >
         <div className="flex flex-col justify-center ">
+            
         <span className="bg-white opacity-100 p-4 rounded-md ">
            <div className="flex justify-end">
             <div className="cursor-pointer" onClick={props.onClose}>
@@ -30,12 +30,14 @@ export function CreateContentModal(props:ContentModalProps){
             <div className="flex justify-center">
                 <Button variant="primary" text={"Summit"} size={'sm'} />
             </div>
+            
 
 
 
 
         </span>
         </div>
+        
     </div>}
        
     </div>)
