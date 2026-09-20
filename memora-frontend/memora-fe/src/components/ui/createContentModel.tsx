@@ -1,5 +1,6 @@
 import { CrossIcon } from "../../icons/crossIcon";
 import { Button } from "./Button";
+import {Input} from "./input"
 
 interface ContentModalProps{
     open:boolean;
@@ -45,8 +46,3 @@ export function CreateContentModal(props:ContentModalProps){
 
 }
 
-function Input({onChange,placeholder}:{onChange:()=>void,placeholder:string}){
-    return <div>
-        <input placeholder={placeholder} type="text" className="px-4 py-2 border m-2 rounded-md text-md" onChange={onChange}/>
-    </div>
-}

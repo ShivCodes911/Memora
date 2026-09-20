@@ -11,6 +11,8 @@ interface ButtonProps{
     startIcon?:ReactElement;      //1. these icons should be optional
     endIcon?:ReactElement;
     onClick?:()=>void;
+    fullscreen?:boolean;
+    loading?:boolean;
 }
 
 
@@ -31,7 +33,7 @@ const defaultStyles="rounded-md p-4 flex items-center justify-center font-light"
 
 export const Button=(props:ButtonProps)=>{
     return <button onClick={props.onClick} className=
-    {`${variantStyles[props.variant]} ${defaultStyles} ${sizeStyles[props.size]} cursor-pointer` }>
+    {`${variantStyles[props.variant]} ${defaultStyles} ${sizeStyles[props.size]} cursor-pointer ${props.fullscreen ? "w-full flex justify-center items-center " : ""} ${props.loading ? "opacity-45":""} `} disabled={props.loading} >
         {props.startIcon ? <div className="pr-2">
         {props.startIcon}</div>:null}
         {props.text}
