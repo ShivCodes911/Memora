@@ -19,7 +19,7 @@ export function Dashboard() {
       <Sidebar/>
     
     <div className=' p-4 ml-64 min-h-screen bg-gray-100 ' >
-      <CreateContentModal open={modalOpen} onClose={()=>{
+      <CreateContentModal type={"youtube"} open={modalOpen} onClose={()=>{
         setModalOpen(false)
       }}/>
       <div className="flex justify-end gap-4">

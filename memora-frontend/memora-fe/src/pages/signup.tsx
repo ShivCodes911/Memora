@@ -4,11 +4,13 @@ import { useRef } from "react";
 import axios from "axios";
 
 import { BACKEND_URL } from "../config"; // import backend url from another file so that we do not have to write it again and again
+import { useNavigate } from "react-router-dom";
 
 
 export function Signup(){
     const usernameRef=useRef<HTMLInputElement | null>(null); // using generics here to tell what kind of information usernameRef 
     const passwordRef=useRef<HTMLInputElement | null>(null);
+    const navigate=useNavigate();
 
    async function  signup(){
 
@@ -20,7 +22,8 @@ export function Signup(){
             username,
             password
                 
-        })
+        });
+        navigate("/signin");
         alert("You have signed up!!!")
     }
 
