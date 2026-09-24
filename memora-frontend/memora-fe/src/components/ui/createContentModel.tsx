@@ -1,8 +1,7 @@
 import { useRef, useState } from "react";
 import { CrossIcon } from "../../icons/crossIcon";
 import { Button } from "./Button";
-import {Input} from "./input"
-import { useNavigate } from "react-router-dom";
+import {Input} from "./input";
 import axios from "axios";
 import { BACKEND_URL } from "../../config";
 
@@ -45,6 +44,8 @@ export function CreateContentModal(props:ContentModalProps){
                 "Authorization":`Bearer ${localStorage.getItem("token")}`
             }
         })
+    
+        props.onClose();
         
     
     }

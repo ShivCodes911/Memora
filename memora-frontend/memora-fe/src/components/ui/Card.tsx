@@ -36,7 +36,7 @@ export const Card=(props:CardProps)=>{
          <div>
     <div className="pt-4  ">
         {props.type==="youtube" && <iframe className="w-full"// w-100 not to use , use instead w-full 
-        src={props.link.replace("?v=", "embed/")}
+        src={props.link.replace("watch?v=", "embed/")}
         title="YouTube video player" 
         frameBorder="0" 
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
