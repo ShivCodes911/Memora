@@ -1,4 +1,5 @@
 import { ShareIcon } from "../../icons/shareIcon";
+import { Delete } from "../../icons/delete";
 
 interface CardProps{
     title:string;
@@ -9,33 +10,32 @@ interface CardProps{
 
 export const Card=(props:CardProps)=>{
     return <div>
-    <div className="bg-white rounded-md 
-         border-gray-200 border p-4 max-w-72 mt-2 mr-2 min-h-48 min-w-72 ">
-        <div className="flex justify-between">
-            <div className=" flex items-center text-md">
-            <div className=" text-gray-500 pr-4">
+<div className="bg-white rounded-md border-gray-200 border p-4 mt-2 mr-2 w-72 h-105 flex flex-col">
+    <div className="flex justify-between shrink-0">
+        <div className=" flex items-center text-md truncate">
+        <div className=" text-gray-500 pr-4">
 
-                <ShareIcon size="md"/>
+            <ShareIcon size="md"/>
+        </div>
+        <span className="truncate">{props.title}</span>
+        </div>
+        
+        <div className="flex items-center text-gray-500">
+            <div className="pr-2">
+                <a href={props.link} target="_blank"/>
+            <ShareIcon size="md"/>
             </div>
-            {props.title} 
-            </div>
-            
-            <div className="flex items-center text-gray-500">
-                <div className="pr-2">
-                    <a href={props.link} target="_blank"/>
-                <ShareIcon size="md"/>
-                </div>
-                <div>
-                <ShareIcon size="md"/>
-                </div>
-
+            <div>
+            <Delete size="md"/>
             </div>
 
+        </div>
 
-         </div>
-         <div>
-    <div className="pt-4  ">
-        {props.type==="youtube" && <iframe className="w-full"// w-100 not to use , use instead w-full 
+
+    </div>
+    <div>
+    <div className="pt-4 flex-1 overflow-hidden">
+        {props.type==="youtube" && <iframe className="w-full h-64 rounded"
         src={props.link.replace("watch?v=", "embed/")}
         title="YouTube video player" 
         frameBorder="0" 
@@ -43,17 +43,21 @@ export const Card=(props:CardProps)=>{
         referrerPolicy="strict-origin-when-cross-origin" 
         allowFullScreen>
 
+
+
+{/* // overflow-y-auto=> "If the content becomes taller than the container, automatically show a vertical scrollbar." */}
         </iframe> }
 
-       {props.type==="twitter" &&<blockquote
+       {props.type==="twitter" && <div className="h-64 overflow-y-auto "> 
+         <blockquote
          className="twitter-tweet">
 
         <a href={props.link.replace("x.com","twitter.com")}>
         </a>
-        </blockquote>}
-
-
-    </div>
+        </blockquote>
+        </div>}
+        
+        </div>
     </div>
 </div>
 </div>
