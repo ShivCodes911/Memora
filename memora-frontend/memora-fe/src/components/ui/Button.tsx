@@ -17,8 +17,8 @@ interface ButtonProps{
 
 
 const variantStyles={
-    "primary":"bg-purple-700 text-white ",
-    "secondary":"bg-purple-200 text-purple-700"
+    "primary":" px-6 py-3 rounded-xl bg-purple-600 text-white font-semibold transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-purple-500/30 active:translate-y-0 ",
+    "secondary":"px-6 py-3 rounded-xl bg-purple-500 text-white font-semibold transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-purple-500/30 active:translate-y-0"
 };
 
 const sizeStyles={
