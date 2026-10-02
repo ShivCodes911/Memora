@@ -8,7 +8,7 @@ export function Sidebar() {
         <div className="h-screen bg-white w-64 border-r border-gray-300 fixed left-0 top-0 pl-6">
             <div className=" flex items-center text-2xl pt-8">
                 <div className="pr-2 text-purple-600 ">
-                    <Logo />
+                    <a href="/dashboard"><Logo /></a>
                 </div>
                 Memora
             </div>
