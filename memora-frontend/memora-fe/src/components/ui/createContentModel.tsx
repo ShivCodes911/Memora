@@ -4,10 +4,8 @@ import { Button } from "./Button";
 import {Input} from "./input";
 import axios from "axios";
 import { BACKEND_URL } from "../../config";
-
-
-
-type ContentType ="youtube"| "twitter" // making type stick to this all because anyone cannot write any type of Types here 
+import type { ContentType } from "../../types/content";
+ // making type stick to this all because anyone cannot write any type of Types here 
 
 
 interface ContentModalProps{

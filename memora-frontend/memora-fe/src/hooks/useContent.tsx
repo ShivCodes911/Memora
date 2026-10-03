@@ -1,9 +1,10 @@
 import axios from "axios";
 import { useEffect, useState } from "react";
 import { BACKEND_URL } from "../config";
+import type { Content } from "../types/content";
 
 export   function useContent(){ 
-    const [contents,setContents]=useState([]);
+    const [contents,setContents]=useState<Content[]>([]);
 
     // making the refresh function so that , the content gets dispalyed on the screen 
 
