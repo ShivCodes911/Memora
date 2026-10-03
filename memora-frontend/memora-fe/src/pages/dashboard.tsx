@@ -19,6 +19,14 @@ export function Dashboard() {
   // using the custom made hook to fetch the card from backend
   const contents=useContent();
 
+  async function handleDelete(contentId:string){
+    await axios.delete(`${BACKEND_URL}/api/v1/content/${contentId}`,{
+      headers:{
+        "Authorization":`Bearer ${localStorage.getItem("token")}`
+      }
+    })
+  }
+
   
   return (
     <div>
@@ -56,10 +64,13 @@ export function Dashboard() {
       {/* these are the hard codded Card , we need to fetch the cards from the backend */}
        {/* we can itrate through all the Card and then display them on the screen */}
 
-       {contents.map(({type,link,title})=> <Card 
+       {contents.map(({_id,type,link,title})=> <Card 
         type={type} 
         link={link} 
-        title={title} 
+        title={title}
+        key={_id}
+        _id={_id}
+        onDelete={handleDelete}
       />
         
         )}
