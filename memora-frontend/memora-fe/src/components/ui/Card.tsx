@@ -1,10 +1,13 @@
 import { ShareIcon } from "../../icons/shareIcon";
 import { Delete } from "../../icons/delete";
+import type { ContentType } from "../../types/content";
 
 interface CardProps{
+    _id:string;
     title:string;
     link:string;
-    type:"twitter"|"youtube";
+    type:ContentType;
+    onDelete:(id:string)=>void;
 
 }
 
@@ -26,7 +29,8 @@ export const Card=(props:CardProps)=>{
             <ShareIcon size="md"/>
             </div>
             <div>
-            <Delete size="md"/>
+            <Delete onClick={()=>props.onDelete(props._id)} size="md"/>
+                {/* {props.onDelete(props._id)=> is taken as dashboard me  card componet  jo prop hey onDelete function  name ka usme prop: _id pass krdo in form of another function name handleDelete } */}
             </div>
 
         </div>
