@@ -9,7 +9,7 @@ import { useNavigate } from "react-router-dom";
 export function Signin(){
     const usernameRef=useRef<HTMLInputElement | null>(null); // using generics here to tell what kind of information usernameRef contains 
     const passwordRef=useRef<HTMLInputElement | null>(null);
-    const navigate=useNavigate();
+    const navigate=useNavigate(); // helps to go to , another page 
 
    async function  signin(){
 
@@ -31,9 +31,8 @@ export function Signin(){
         navigate("/dashboard");
 
     }
-
-
-
+    // under this the UI part is there 
+    
     return <div className="h-screen w-screen bg-gray-200 flex justify-center items-center">
         <div className="bg-white rounded-md border min-w-48 p-4">
             <div className="flex justify-center text-2xl text-purple-800 -translate-y-2 ">
@@ -47,10 +46,8 @@ export function Signin(){
             <div className="flex justify-center pb-1 mt-2">
                 <Button onClick={signin} loading={false} variant={"primary"} text="Signin" size="md" fullscreen={true}/>
             </div>
-
-
-
-        </div>
+            
+         </div>
 
     </div>
 }

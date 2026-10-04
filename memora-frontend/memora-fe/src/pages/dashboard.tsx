@@ -47,7 +47,7 @@ export function Dashboard() {
             "Authorization":`Bearer ${localStorage.getItem("token")}`
           }
         })
-        const shareUrl=`http://localhost:5173/content/share/${response.data.link}`;
+        const shareUrl=`http://localhost:5173${response.data.link}`;
         navigator.clipboard.writeText(shareUrl);
         alert("Url Copied !") 
 
