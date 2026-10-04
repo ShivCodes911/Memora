@@ -36,6 +36,8 @@ export const addContent=async(req:Request,res:Response)=>{
 
 };
 
+// diaplays the added content on the screen 
+
 export const fetchContent=async(req:Request,res:Response)=>{
     try {
         const userId=req.userId;
@@ -108,7 +110,7 @@ export const shareContent=async(req:Request,res:Response)=>{
                 link:`/share/${existingLink.hash}`
             })
         }
-        const {share}=req.body;
+        const {share}:{share:boolean}=req.body;
 
         const userId=req.userId
 
@@ -152,7 +154,6 @@ export const shareContent=async(req:Request,res:Response)=>{
 
 export const fetchSharedContent=async(req:Request,res:Response)=>{
     try {
-
         const hash=req.params.shareLink!;
 
         
@@ -198,6 +199,9 @@ export const fetchSharedContent=async(req:Request,res:Response)=>{
             })
 } catch (error) {
         console.error("failed",error);
+           return res.status(500).json({
+            message: "Internal server error"
+        });
         
     }
 
