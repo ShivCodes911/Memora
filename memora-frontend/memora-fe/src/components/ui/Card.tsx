@@ -1,5 +1,7 @@
 import { ShareIcon } from "../../icons/shareIcon";
 import { Delete } from "../../icons/delete";
+import { YoutubeIcon } from "../../icons/youtube";
+import { TwitterIcon } from "../../icons/twitter";
 import type { ContentType } from "../../types/content";
 
 interface CardProps{
@@ -16,17 +18,20 @@ export const Card=(props:CardProps)=>{
 <div className="bg-white rounded-md border-gray-200 border p-4 mt-2 mr-2 w-72 h-105 flex flex-col">
     <div className="flex justify-between shrink-0">
         <div className=" flex items-center text-md truncate">
-        <div className=" text-gray-500 pr-4">
-
-            <ShareIcon size="md"/>
+        <div className=" text-gray-500 pr-4 translate-y-1">
+            {props.type==="youtube" && <YoutubeIcon/>}
+            {props.type==="twitter" && <TwitterIcon/>}
+            {props.type!=="youtube" && props.type!=="twitter" && <ShareIcon size="md"/>}
         </div>
-        <span className="truncate">{props.title}</span>
+        <span className="truncate text-xl font-bold text-gray-700">{props.title}</span>
         </div>
         
         <div className="flex items-center text-gray-500">
             <div className="pr-2">
-                <a href={props.link} target="_blank"/>
-            <ShareIcon size="md"/>
+            <ShareIcon size="md" onClick={async ()=>{
+                await navigator.clipboard.writeText(props.link);
+                alert("Url Copied !");
+            }}/>
             </div>
             <div>
             <Delete onClick={()=>props.onDelete(props._id)} size="md"/>

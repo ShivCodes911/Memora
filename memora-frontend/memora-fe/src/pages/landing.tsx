@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { Logo } from "../icons/logo";
+import { Navbar } from "../components/Navbar";
 
 export function Landing() {
   const [dark, setDark] = useState(() => localStorage.getItem("theme") === "dark");
@@ -11,33 +11,15 @@ export function Landing() {
   }, [dark]);
 
   return (
-    <div className="min-h-screen bg-white text-gray-900 dark:bg-gray-950 dark:text-gray-100">
+    <div className="relative min-h-screen bg-white text-gray-900 dark:bg-gray-950 dark:text-gray-100 overflow-x-hidden transition-colors duration-300">
+      {/* AMBIENT BACKGROUND GLOWS FOR GLASSMORPHISM ILLUMINATION */}
+      <div className="pointer-events-none absolute -top-32 left-1/2 -translate-x-1/2 w-[800px] sm:w-[1100px] h-[450px] bg-gradient-to-tr from-purple-400/20 via-indigo-500/20 to-pink-400/15 dark:from-purple-600/30 dark:via-indigo-600/20 dark:to-purple-900/35 blur-[120px] rounded-full -z-0" />
+      
       {/* NAVBAR */}
-      <nav className="flex items-center justify-between px-6 md:px-12 py-4 border-b border-gray-200 dark:border-gray-800 sticky top-0 bg-white/80 dark:bg-gray-950/80 backdrop-blur z-50">
-        <div className="flex items-center gap-2">
-          <div className="w-10 h-10 rounded-lg bg-purple-600 flex items-center justify-center text-white cursor-pointer ">
-            <a href="/"><Logo /></a>
-          </div>
-          <span className="font-bold text-xl tracking-tight">Memora</span>
-        </div>
-        {/* middle options - notch pill */}
-        <div className="hidden md:flex items-center gap-1 text-sm text-gray-600 dark:text-gray-300 px-2 py-1.5 rounded-full border border-gray-200 dark:border-gray-700 bg-gray-100/80 dark:bg-gray-900/80 shadow-sm">
-          <a href="#features" className="px-4 py-1.5 rounded-full transition hover:bg-purple-200 dark:hover:bg-purple-600/30 hover:text-purple-600 dark:hover:text-purple-200">Features</a>
-          <a href="#how" className="px-4 py-1.5 rounded-full transition hover:bg-purple-200 dark:hover:bg-purple-600/30 hover:text-purple-600 dark:hover:text-purple-200">How it works</a>
-          <a href="#types" className="px-4 py-1.5 rounded-full transition hover:bg-purple-200 dark:hover:bg-purple-600/30 hover:text-purple-600 dark:hover:text-purple-200">Content types</a>
-          <a href="#faq" className="px-4 py-1.5 rounded-full transition hover:bg-purple-200 dark:hover:bg-purple-600/30 hover:text-purple-600 dark:hover:text-purple-200">FAQ</a>
-        </div>
-        <div className="flex items-center gap-2">
-          <button onClick={() => setDark(!dark)} className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800">
-            {dark ? "☀️" : "🌙"}
-          </button>
-          <Link to="/signin" className="text-sm font-medium px-4 py-2 rounded-lg bg-purple-200/40 text-purple-600 border border-purple-600/30 transition hover:bg-purple-200 hover:shadow-sm dark:bg-purple-600/20 dark:text-purple-200 dark:border-purple-600/40 dark:hover:bg-purple-600/30">Sign in</Link>
-          <Link to="/signup" className="text-sm font-medium px-4 py-2 rounded-lg bg-purple-600 text-white hover:opacity-90">Get Started</Link>
-        </div>
-      </nav>
+      <Navbar dark={dark} setDark={setDark} />
 
       {/* HERO */}
-      <section className="text-center px-6 py-20 md:py-28 max-w-4xl mx-auto">
+      <section className="relative z-10 text-center px-6 pt-28 pb-20 md:pt-36 md:pb-28 max-w-4xl mx-auto">
         <div className="inline-block text-xs font-semibold px-3 py-1 rounded-full bg-purple-200 dark:bg-purple-600/20 text-purple-600 dark:text-purple-200 mb-6">
           YOUR SECOND BRAIN
         </div>
@@ -77,7 +59,7 @@ export function Landing() {
             { t: "Private by Default", d: "JWT-secured. Only you see your content until you hit Share." },
             { t: "Access Anywhere", d: "Fully responsive. Your second brain on mobile, tablet and desktop." },
           ].map((f) => (
-            <div key={f.t} className="p-6 rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 hover:shadow-lg transition">
+            <div key={f.t} className="p-6 rounded-2xl border border-gray-200/80 dark:border-white/10 bg-white/70 dark:bg-gray-900/60 backdrop-blur-md hover:shadow-xl hover:shadow-purple-500/10 hover:-translate-y-1 transition-all duration-300">
               <h3 className="font-bold text-lg">{f.t}</h3>
               <p className="text-gray-600 dark:text-gray-400 text-sm mt-2">{f.d}</p>
             </div>
