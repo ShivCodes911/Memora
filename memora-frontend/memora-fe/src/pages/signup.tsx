@@ -166,6 +166,14 @@ export function Signup() {
                   autoComplete="username"
                   onFocus={() => setUserFocus(true)}
                   onBlur={() =>  setUserFocus(false)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      if (!passwordRef.current?.value) {
+                        e.preventDefault();
+                        passwordRef.current?.focus();
+                      }
+                    }
+                  }}
                   placeholder="Jane Doe"
                   className="w-full bg-transparent text-base sm:text-lg font-medium text-gray-900 outline-none placeholder:text-gray-300"
                 />
@@ -184,7 +192,7 @@ export function Signup() {
                   autoComplete="new-password"
                   onFocus={() => setPassFocus(true)}
                   onBlur={() =>  setPassFocus(false)}
-                  placeholder="janedoe@mail.com"
+                  placeholder="••••••••"
                   className="w-full bg-transparent text-base sm:text-lg font-medium text-gray-900 outline-none placeholder:text-gray-300"
                 />
                 <button
