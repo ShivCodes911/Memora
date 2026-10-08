@@ -206,3 +206,82 @@ export const fetchSharedContent=async(req:Request,res:Response)=>{
     }
 
 };
+
+export const fetchMetadata = async (req: Request, res: Response) => {
+    try {
+        const urlStr = req.query.url as string;
+        if (!urlStr) {
+            return res.status(400).json({ message: "URL is required" });
+        }
+
+        const targetUrl = urlStr.startsWith("http") ? urlStr : `https://${urlStr}`;
+        const response = await fetch(targetUrl, {
+            headers: {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                "Accept-Language": "en-US,en;q=0.5"
+            },
+            redirect: "follow",
+            signal: AbortSignal.timeout(8000)
+        });
+
+        const html = await response.text();
+        const parsedUrl = new URL(targetUrl);
+
+        // Helper: extract meta tag content (handles both property and name, and both attribute orderings)
+        const getMetaContent = (property: string): string | null => {
+            // Pattern 1: property/name before content
+            const p1 = new RegExp(`<meta[^>]*?(?:property|name)\\s*=\\s*["']${property}["'][^>]*?content\\s*=\\s*["']([^"']+)["']`, 'i');
+            // Pattern 2: content before property/name
+            const p2 = new RegExp(`<meta[^>]*?content\\s*=\\s*["']([^"']+)["'][^>]*?(?:property|name)\\s*=\\s*["']${property}["']`, 'i');
+            const match = html.match(p1) || html.match(p2);
+            return (match && match[1]) ? match[1].trim() : null;
+        };
+
+        // Title extraction: try OG, then twitter, then <title> tag (dotAll to handle multiline)
+        const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+        const rawTitle = getMetaContent("og:title") 
+            || getMetaContent("twitter:title") 
+            || (titleMatch && titleMatch[1] ? titleMatch[1].replace(/\s+/g, ' ').trim() : null);
+        
+        const title = rawTitle 
+            ? rawTitle.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&#x27;/g, "'") 
+            : parsedUrl.hostname;
+        
+        const description = getMetaContent("og:description") || getMetaContent("twitter:description") || getMetaContent("description") || "";
+
+        // Image: resolve relative URLs to absolute
+        let image = getMetaContent("og:image") || getMetaContent("twitter:image") || getMetaContent("twitter:image:src") || "";
+        if (image && !image.startsWith("http")) {
+            if (image.startsWith("//")) {
+                image = `https:${image}`;
+            } else {
+                image = new URL(image, targetUrl).href;
+            }
+        }
+
+        const favicon = `https://www.google.com/s2/favicons?domain=${parsedUrl.hostname}&sz=64`;
+
+        return res.status(200).json({
+            title,
+            description: description.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"'),
+            image,
+            favicon,
+            domain: parsedUrl.hostname
+        });
+    } catch (error) {
+        console.error("Fetch metadata error:", error);
+        // Return empty but valid response so the frontend doesn't break
+        const fallbackDomain = (() => {
+            try { return new URL(req.query.url as string).hostname; } catch { return ""; }
+        })();
+        return res.status(200).json({
+            title: "",
+            description: "",
+            image: "",
+            favicon: fallbackDomain ? `https://www.google.com/s2/favicons?domain=${fallbackDomain}&sz=64` : "",
+            domain: fallbackDomain
+        });
+    }
+};
+

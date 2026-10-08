@@ -3,48 +3,37 @@ import { useEffect, useState } from "react";
 import { BACKEND_URL } from "../config";
 import type { Content } from "../types/content";
 
-export   function useContent(){ 
-    const [contents,setContents]=useState<Content[]>([]);
+export function useContent() {
+    const [contents, setContents] = useState<Content[]>([]);
+    const [loading, setLoading]   = useState(true);
 
-    // making the refresh function so that , the content gets dispalyed on the screen 
-
-    function refresh(){
-    
-        axios.get(`${BACKEND_URL}/api/v1/content/`,{
-            headers:{
+    function refresh() {
+        axios.get(`${BACKEND_URL}/api/v1/content/`, {
+            headers: {
                 Authorization: `Bearer ${localStorage.getItem("token")}`
             }
-         })
-        .then((response)=>{
-            setContents(response.data.content)
         })
-    
-
+        .then((response) => {
+            setContents(response.data.content || []);
+        })
+        .catch((err) => {
+            console.error("Failed to fetch contents:", err);
+        })
+        .finally(() => {
+            setLoading(false);
+        });
     }
 
-
-
-    useEffect( ()=>{
-        // we cannot have the async useEffect so , we have to use .then() and .catch() synctax
+    useEffect(() => {
         refresh();
-
-        let interval=setInterval(()=>{
+        const interval = setInterval(() => {
             refresh();
+        }, 3 * 1000);
 
-        },2*1000)
-
-
-        // doing cleanup here for the intervals
-        // now every 10 sec it will refresh things from backend
-
-        return ()=>{
+        return () => {
             clearInterval(interval);
-        }
+        };
+    }, []);
 
-        },[]);
-
-         
-
-    return contents;
-
+    return { contents, refresh, loading };
 }

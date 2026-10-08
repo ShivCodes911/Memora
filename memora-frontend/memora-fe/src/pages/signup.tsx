@@ -198,7 +198,7 @@ export function Signup() {
                 <button
                   type="button"
                   onClick={() => setShowPass(!showPass)}
-                  className="text-gray-400 hover:text-[#38bdf8] transition-colors pl-2"
+                  className="text-gray-400 hover:text-[#38bdf8] transition-colors pl-2 cursor-pointer"
                   aria-label={showPass ? "Hide password" : "Show password"}
                 >
                   {showPass ? (
@@ -237,7 +237,7 @@ export function Signup() {
               <button
                 type="submit"
                 disabled={loading}
-                className="px-12 py-3.5 rounded-full bg-[#8cd6f7] hover:bg-[#6ec9f5] active:bg-[#52bceb] text-white font-semibold text-base sm:text-lg transition-all shadow-md active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-12 py-3.5 rounded-full bg-[#8cd6f7] hover:bg-[#6ec9f5] active:bg-[#52bceb] text-white font-semibold text-base sm:text-lg transition-all shadow-md active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
               >
                 {loading ? "Signing up..." : "Sign up"}
               </button>
