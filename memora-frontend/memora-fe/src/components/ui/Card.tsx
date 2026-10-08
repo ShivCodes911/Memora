@@ -99,7 +99,7 @@ export const Card = ({ _id, title, link, type, onDelete, onCopyToast, isDark }: 
     const hasImage = isArticle && metadata?.image && !imgError;
 
     return (
-        <div className={`rounded-2xl border p-5 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col w-full sm:w-[340px] h-[400px] hover:-translate-y-1 group relative overflow-hidden ${
+        <div className={`rounded-2xl border p-5 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col w-full h-[400px] hover:-translate-y-1 group relative overflow-hidden ${
             isDark 
                 ? "bg-[#1e1d1b] border-white/10 text-gray-100 hover:border-purple-500/40 shadow-black/40" 
                 : "bg-white border-gray-200/80 text-gray-800"
