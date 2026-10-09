@@ -1,8 +1,4 @@
 import { Link } from "react-router-dom";
-<<<<<<< HEAD
-import { useEffect, useState } from "react";
-import { Navbar } from "../components/Navbar";
-=======
 import { useEffect, useRef, useState } from "react";
 import type { CSSProperties, MouseEvent, ReactNode } from "react";
 import { Logo } from "../icons/logo";
@@ -753,7 +749,6 @@ function paintPastel(e: MouseEvent<HTMLSpanElement>) {
 function clearPastel(e: MouseEvent<HTMLSpanElement>) {
   e.currentTarget.style.backgroundColor = "";
 }
->>>>>>> 14a441e510a16e6550c76732ceecd5c6872a65b4
 
 export function Landing() {
   const [dark, setDark] = useState(() => localStorage.getItem("theme") === "dark");
@@ -771,19 +766,6 @@ export function Landing() {
   }, []);
 
   return (
-<<<<<<< HEAD
-    <div className="relative min-h-screen bg-white text-gray-900 dark:bg-gray-950 dark:text-gray-100 overflow-x-hidden transition-colors duration-300">
-      {/* AMBIENT BACKGROUND GLOWS FOR GLASSMORPHISM ILLUMINATION */}
-      <div className="pointer-events-none absolute -top-32 left-1/2 -translate-x-1/2 w-[800px] sm:w-[1100px] h-[450px] bg-gradient-to-tr from-purple-400/20 via-indigo-500/20 to-pink-400/15 dark:from-purple-600/30 dark:via-indigo-600/20 dark:to-purple-900/35 blur-[120px] rounded-full -z-0" />
-      
-      {/* NAVBAR */}
-      <Navbar dark={dark} setDark={setDark} />
-
-      {/* HERO */}
-      <section className="relative z-10 text-center px-6 pt-28 pb-20 md:pt-36 md:pb-28 max-w-4xl mx-auto">
-        <div className="inline-block text-xs font-semibold px-3 py-1 rounded-full bg-purple-200 dark:bg-purple-600/20 text-purple-600 dark:text-purple-200 mb-6">
-          YOUR SECOND BRAIN
-=======
     <div className="min-h-screen overflow-x-clip bg-white font-jakarta text-gray-900 dark:bg-[#0B0E14] dark:text-gray-100">
       {/* NAVBAR */}
       <nav
@@ -860,7 +842,6 @@ export function Landing() {
             No credit card • Free forever plan • 30-sec setup
           </p>
           </div>
->>>>>>> 14a441e510a16e6550c76732ceecd5c6872a65b4
         </div>
 
         <div className="relative mt-20 motion-safe:animate-fade-up" style={{ animationDelay: "800ms" }}>
@@ -902,25 +883,6 @@ export function Landing() {
       </section>
 
       {/* FEATURES */}
-<<<<<<< HEAD
-      <section id="features" className="px-6 md:px-12 py-16 max-w-6xl mx-auto">
-        <h2 className="text-3xl font-bold text-center">Everything you need to never forget</h2>
-        <p className="text-center text-gray-600 dark:text-gray-400 mt-3">One dashboard for all your digital memory.</p>
-        <div className="grid md:grid-cols-3 gap-6 mt-10">
-          {[
-            { t: "Save Anything", d: "YouTube, Twitter/X, articles, docs, links. One click to add to your brain." },
-            { t: "Search Instantly", d: "All your content organized as cards. Find any title or link in seconds." },
-            { t: "Share Your Brain", d: "One public link shares your whole collection. Perfect for portfolios & teams." },
-            { t: "Clean Dashboard", d: "Sidebar + card view keeps YouTube, tweets and notes beautifully separated." },
-            { t: "Private by Default", d: "JWT-secured. Only you see your content until you hit Share." },
-            { t: "Access Anywhere", d: "Fully responsive. Your second brain on mobile, tablet and desktop." },
-          ].map((f) => (
-            <div key={f.t} className="p-6 rounded-2xl border border-gray-200/80 dark:border-white/10 bg-white/70 dark:bg-gray-900/60 backdrop-blur-md hover:shadow-xl hover:shadow-purple-500/10 hover:-translate-y-1 transition-all duration-300">
-              <h3 className="font-bold text-lg">{f.t}</h3>
-              <p className="text-gray-600 dark:text-gray-400 text-sm mt-2">{f.d}</p>
-            </div>
-          ))}
-=======
       <section id="features" className="scroll-mt-24 bg-gray-100/60 px-6 py-20 md:px-12 dark:bg-gray-900/40">
         <div className="mx-auto max-w-6xl">
           <Reveal className="text-center">
@@ -934,7 +896,6 @@ export function Landing() {
               </Reveal>
             ))}
           </div>
->>>>>>> 14a441e510a16e6550c76732ceecd5c6872a65b4
         </div>
       </section>
 

@@ -10,6 +10,7 @@ export interface TopBarProps {
   searchQuery?: string;
   onSearchChange?: (query: string) => void;
   className?: string;
+  isDark?: boolean;
 }
 
 export function TopBar({
@@ -22,10 +23,11 @@ export function TopBar({
   searchQuery,
   onSearchChange,
   className = "",
+  isDark = true,
 }: TopBarProps) {
   return (
     <header
-      className={`w-full h-14 bg-[#191919] border-b border-white/5 px-4 flex items-center justify-between shrink-0 select-none ${className}`}
+      className={`w-full h-14 ${isDark ? "bg-[#191919] border-white/5" : "bg-white border-gray-200"} border-b px-4 flex items-center justify-between shrink-0 select-none transition-colors duration-300 ${className}`}
     >
       {/* Left: Far-left Hamburger Menu Icon */}
       <div className="flex items-center gap-3">
@@ -49,7 +51,11 @@ export function TopBar({
               value={searchQuery || ""}
               onChange={(e) => onSearchChange(e.target.value)}
               placeholder="Type to search..."
-              className="w-full bg-[#202020] border border-white/5 rounded-md px-8 py-1.5 text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-white/20 transition-all"
+              className={`w-full border rounded-md px-8 py-1.5 text-sm focus:outline-none transition-all ${
+                isDark 
+                  ? "bg-[#202020] border-white/5 text-gray-200 placeholder-gray-500 focus:border-white/20" 
+                  : "bg-gray-100 border-transparent text-gray-900 placeholder-gray-400 focus:bg-white focus:border-purple-300 focus:ring-1 focus:ring-purple-300"
+              }`}
             />
             <svg
               className="w-4 h-4 text-gray-500 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none"
@@ -69,7 +75,11 @@ export function TopBar({
           <button
             type="button"
             onClick={onShareBrain}
-            className="px-3.5 py-1.5 rounded-md bg-[#202020] hover:bg-[#262626] text-gray-300 hover:text-white text-sm font-medium transition-all cursor-pointer border border-white/5"
+            className={`px-3.5 py-1.5 rounded-md text-sm font-medium transition-all cursor-pointer border ${
+              isDark 
+                ? "bg-[#202020] hover:bg-[#262626] text-gray-300 hover:text-white border-white/5" 
+                : "bg-white hover:bg-gray-50 text-gray-700 hover:text-gray-900 border-gray-200 shadow-sm"
+            }`}
             title="Share Brain Link"
           >
             Share
@@ -80,7 +90,11 @@ export function TopBar({
           <button
             type="button"
             onClick={onAddMemory}
-            className="px-4 py-1.5 rounded-md bg-white/10 hover:bg-white/15 text-white text-sm font-medium transition-all cursor-pointer border border-white/10 flex items-center gap-1.5 active:scale-95"
+            className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all cursor-pointer border flex items-center gap-1.5 active:scale-95 ${
+              isDark 
+                ? "bg-white/10 hover:bg-white/15 text-white border-white/10" 
+                : "bg-purple-600 hover:bg-purple-700 text-white border-purple-600 shadow-sm"
+            }`}
           >
             <span>+</span>
             <span>Add</span>

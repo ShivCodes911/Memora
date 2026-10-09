@@ -18,6 +18,22 @@ export function Dashboard() {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
+  const [isDark, setIsDark] = useState(() => {
+    const saved = localStorage.getItem("theme");
+    return saved !== "light";
+  });
+
+  useEffect(() => {
+    localStorage.setItem("theme", isDark ? "dark" : "light");
+    if (isDark) {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+  }, [isDark]);
+
+  const toggleTheme = () => setIsDark(!isDark);
+
   const { contents, refresh, loading } = useContent();
   const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -188,7 +204,7 @@ export function Dashboard() {
   });
 
   return (
-    <div className="h-screen w-screen bg-[#191919] text-gray-200 font-sans flex overflow-hidden relative">
+    <div className={`h-screen w-screen ${isDark ? "bg-[#191919] text-gray-200" : "bg-white text-gray-900"} font-sans flex overflow-hidden relative transition-colors duration-300`}>
 
       {/* ── Left Navigation Panel (Sidebar Drawer / Flex Sibling) ──── */}
       <Sidebar
@@ -197,6 +213,8 @@ export function Dashboard() {
         activeTab={activeTab}
         onSelectTab={(tabId) => setActiveTab(tabId)}
         items={NAV_ITEMS}
+        isDark={isDark}
+        onToggleTheme={toggleTheme}
       />
 
       {/* ── Hover Navigation Preview (Floats without pushing content) ── */}
@@ -219,10 +237,11 @@ export function Dashboard() {
           setSidebarOpen(true);
           setPreviewOpen(false);
         }}
+        isDark={isDark}
       />
 
       {/* ── Main Workspace Window (TopBar + Content Area) ──────────── */}
-      <div className="flex-1 h-full flex flex-col min-w-0 bg-[#191919] overflow-hidden relative transition-all duration-300 ease-out">
+      <div className={`flex-1 h-full flex flex-col min-w-0 ${isDark ? "bg-[#191919]" : "bg-white"} overflow-hidden relative transition-all duration-300 ease-out`}>
         
         {/* Top Header Bar */}
         <TopBar
@@ -237,9 +256,10 @@ export function Dashboard() {
           onShareBrain={handleShare}
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
+          isDark={isDark}
         />
 
-        {/* Viewport Canvas (#191919) */}
+        {/* Viewport Canvas */}
         <main className="flex-1 w-full h-full overflow-y-auto p-6 sm:p-10 relative">
           {loading && contents.length === 0 ? (
             <div className="w-full h-full flex items-center justify-center">
@@ -249,15 +269,13 @@ export function Dashboard() {
               </div>
             </div>
           ) : filteredContents.length === 0 ? (
-            /* Distraction-Free Empty State on #191919 */
             <EmptyState
               isSearch={searchQuery.trim() !== ""}
               searchQuery={searchQuery}
               onAddClick={() => setModalOpen(true)}
-              isDark={true}
+              isDark={isDark}
             />
           ) : (
-            /* Independent Column Masonry Grid (Serial Top-Left Distribution & Zero Cross-Column Shift) */
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6 items-start">
               {columns.map((colItems, colIdx) => (
                 <div key={colIdx} className="flex flex-col gap-6">
@@ -271,7 +289,7 @@ export function Dashboard() {
                       description={description}
                       onDelete={handleDelete}
                       onCopyToast={showToast}
-                      isDark={true}
+                      isDark={isDark}
                     />
                   ))}
                 </div>

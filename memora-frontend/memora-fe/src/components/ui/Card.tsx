@@ -118,7 +118,7 @@ export const Card = ({ _id, title, link, type, description, onDelete, onCopyToas
 
     useEffect(() => {
         if (isEditingDesc) {
-            requestAnimationFrame(() => {
+            const timer = setTimeout(() => {
                 adjustTextareaHeight();
                 const el = textareaRef.current;
                 if (el) {
@@ -127,7 +127,8 @@ export const Card = ({ _id, title, link, type, description, onDelete, onCopyToas
                     el.setSelectionRange(len, len);
                     el.scrollTop = el.scrollHeight;
                 }
-            });
+            }, 50);
+            return () => clearTimeout(timer);
         }
     }, [isEditingDesc]);
 
@@ -203,11 +204,7 @@ export const Card = ({ _id, title, link, type, description, onDelete, onCopyToas
 
     return (
         <>
-        <div className={`rounded-2xl border p-5 shadow-sm hover:shadow-xl transition-[max-height,shadow,transform] duration-300 ease-out flex flex-col w-full hover:-translate-y-1 group relative overflow-hidden ${
-            type === "youtube"
-                ? (isNoteExpanded || isEditingDesc ? "max-h-[1200px] h-auto pb-6" : "max-h-[600px] h-auto")
-                : "h-[420px]"
-        } ${
+        <div className={`rounded-2xl border p-5 shadow-sm hover:shadow-xl transition-[shadow,transform] duration-300 ease-out flex flex-col w-full hover:-translate-y-1 group relative overflow-hidden h-auto ${
             isDark 
                 ? "bg-[#1e1d1b] border-white/10 text-gray-100 hover:border-purple-500/40 shadow-black/40" 
                 : "bg-white border-gray-200/80 text-gray-800"
@@ -604,7 +601,7 @@ export const Card = ({ _id, title, link, type, description, onDelete, onCopyToas
 
         {/* Full-Screen PDF Reader Modal Overlay */}
         {readerOpen && (
-            <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex flex-col p-3 sm:p-6 animate-in fade-in duration-200">
+            <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xl flex flex-col p-3 sm:p-6 animate-in fade-in duration-200">
                 {/* Modal Header */}
                 <div className="flex items-center justify-between pb-3 border-b border-white/10 text-white shrink-0">
                     <div className="flex items-center gap-3 min-w-0">
@@ -652,15 +649,18 @@ export const Card = ({ _id, title, link, type, description, onDelete, onCopyToas
 
         {/* YouTube Video Player Modal Overlay */}
         {playerOpen && (
-            <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200">
-                <div className="relative w-full max-w-4xl aspect-video bg-black rounded-2xl overflow-hidden shadow-2xl border border-white/10 flex flex-col">
+            <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xl flex flex-col items-center justify-center p-4 sm:p-8 animate-in fade-in duration-200">
+                <div className="w-full max-w-4xl flex justify-end mb-4">
                     <button
                         type="button"
                         onClick={() => setPlayerOpen(false)}
-                        className="absolute top-3 right-3 z-10 px-3 py-1.5 rounded-xl bg-black/70 hover:bg-black text-white text-xs font-bold border border-white/20 transition-all cursor-pointer shadow-md"
+                        className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-sm font-bold border border-white/20 transition-all cursor-pointer flex items-center gap-2 shadow-md"
                     >
-                        ✕ Close Video
+                        <span>Close Video</span>
+                        <span className="text-lg leading-none">✕</span>
                     </button>
+                </div>
+                <div className="relative w-full max-w-4xl aspect-video bg-black rounded-2xl overflow-hidden shadow-2xl border border-white/10 flex flex-col shrink-0">
                     <iframe
                         src={`${getYouTubeEmbedUrl(link)}?autoplay=1`}
                         title={title}

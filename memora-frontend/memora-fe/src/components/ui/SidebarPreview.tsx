@@ -15,6 +15,7 @@ export interface SidebarPreviewProps {
   activeTab: string;
   onSelectTab: (tabId: string) => void;
   onLockSidebar: () => void;
+  isDark?: boolean;
 }
 
 export function SidebarPreview({
@@ -25,12 +26,15 @@ export function SidebarPreview({
   activeTab,
   onSelectTab,
   onLockSidebar,
+  isDark = true,
 }: SidebarPreviewProps) {
   return (
     <div
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
-      className={`fixed top-12 left-3 z-50 w-[260px] max-h-[85vh] overflow-y-auto bg-[#202020] border border-white/10 rounded-xl p-3 shadow-2xl transition-all duration-200 ease-out flex flex-col justify-between ${
+      className={`fixed top-12 left-3 z-50 w-[260px] max-h-[85vh] overflow-y-auto ${
+        isDark ? "bg-[#202020] border-white/10" : "bg-[#F9F8F7] border-gray-200"
+      } border rounded-xl p-3 shadow-2xl transition-all duration-200 ease-out flex flex-col justify-between ${
         visible
           ? "opacity-100 translate-y-0 scale-100 pointer-events-auto"
           : "opacity-0 -translate-y-2 scale-95 pointer-events-none"
@@ -38,12 +42,14 @@ export function SidebarPreview({
     >
       <div>
         {/* Notion-style Floating Box Header */}
-        <div className="flex items-center justify-between px-2.5 py-1.5 mb-2 rounded-lg bg-white/5 border border-white/5">
+        <div className={`flex items-center justify-between px-2.5 py-1.5 mb-2 rounded-lg border ${
+          isDark ? "bg-white/5 border-white/5" : "bg-white border-gray-200"
+        }`}>
           <div className="flex items-center gap-2 min-w-0">
-            <div className="w-5 h-5 rounded bg-purple-600/30 text-purple-400 flex items-center justify-center font-bold text-[10px]">
+            <div className="w-5 h-5 rounded bg-purple-600/30 text-purple-600 flex items-center justify-center font-bold text-[10px]">
               M
             </div>
-            <span className="text-xs font-semibold text-gray-200 truncate">Memora Vault</span>
+            <span className={`text-xs font-semibold truncate ${isDark ? "text-gray-200" : "text-gray-800"}`}>Memora Vault</span>
           </div>
 
           {/* Expand / Lock Button */}
@@ -80,6 +86,7 @@ export function SidebarPreview({
               count={item.count}
               active={activeTab === item.id}
               onClick={() => onSelectTab(item.id)}
+              isDark={isDark}
             />
           ))}
         </div>
