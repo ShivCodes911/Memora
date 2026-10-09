@@ -7,6 +7,7 @@ import { Card } from "../components/ui/Card";
 import { Toast } from "../components/ui/Toast";
 import { YoutubeIcon } from "../icons/youtube";
 import { TwitterIcon } from "../icons/twitter";
+import { PdfIcon } from "../icons/pdfIcon";
 
 export function SharedPage() {
     const { shareLink } = useParams();
@@ -67,12 +68,14 @@ export function SharedPage() {
 
     const youtubeCount = data.content.filter((c) => c.type === "youtube").length;
     const twitterCount = data.content.filter((c) => c.type === "twitter").length;
-    const articleCount = data.content.filter((c) => c.type !== "youtube" && c.type !== "twitter").length;
+    const pdfCount = data.content.filter((c) => c.type === "pdf").length;
+    const articleCount = data.content.filter((c) => c.type !== "youtube" && c.type !== "twitter" && c.type !== "pdf").length;
 
     const filteredContents = data.content.filter((item) => {
         if (activeTab === "youtube" && item.type !== "youtube") return false;
         if (activeTab === "twitter" && item.type !== "twitter") return false;
-        if (activeTab === "article" && (item.type === "youtube" || item.type === "twitter")) return false;
+        if (activeTab === "pdf" && item.type !== "pdf") return false;
+        if (activeTab === "article" && (item.type === "youtube" || item.type === "twitter" || item.type === "pdf")) return false;
 
         if (searchQuery.trim() !== "") {
             const q = searchQuery.toLowerCase();
@@ -171,6 +174,15 @@ export function SharedPage() {
                         >
                             <TwitterIcon />
                             <span>Twitter / X ({twitterCount})</span>
+                        </button>
+                        <button
+                            onClick={() => setActiveTab("pdf")}
+                            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                                activeTab === "pdf" ? "bg-red-600 text-white shadow-sm" : "bg-[#18181b] text-zinc-400 border border-zinc-800 hover:text-white"
+                            }`}
+                        >
+                            <PdfIcon className="w-3.5 h-3.5 text-red-400" />
+                            <span>PDFs ({pdfCount})</span>
                         </button>
                         <button
                             onClick={() => setActiveTab("article")}

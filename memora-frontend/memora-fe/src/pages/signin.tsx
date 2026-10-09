@@ -57,27 +57,27 @@ export function Signin() {
       <ShaderBackground />
 
       {/* ══════════════════════════════════════
-          ELEVATED PAYONEER CARD CONTAINER WITH GLASS BLUR
+          ELEVATED GLASS CONTAINER WITH SMOOTH BLUR
       ══════════════════════════════════════ */}
-      <div className="relative z-10 w-full max-w-[1240px] h-full max-h-[90vh] bg-[#141312]/95 backdrop-blur-2xl rounded-[28px] sm:rounded-[36px] overflow-hidden flex flex-col lg:flex-row shadow-[0_30px_90px_rgba(0,0,0,0.8)] border border-white/10">
+      <div className="relative z-10 w-full max-w-[1240px] h-full max-h-[90vh] bg-black/40 backdrop-blur-3xl rounded-[28px] sm:rounded-[36px] overflow-hidden flex flex-col lg:flex-row shadow-[0_30px_90px_rgba(0,0,0,0.8)] border border-white/15">
 
         {/* ══════════════════════════════════════
-            LEFT PANEL — Signin Image Asset Display (Clean, No Extra Text)
+            LEFT PANEL — Signin Image Asset Display
         ══════════════════════════════════════ */}
-        <div className="hidden lg:flex lg:w-[46%] xl:w-[44%] items-center justify-center bg-[#141312]/90 relative overflow-hidden border-r border-white/5">
+        <div className="hidden lg:flex lg:w-[46%] xl:w-[44%] items-center justify-center bg-black/30 relative overflow-hidden border-r border-white/10">
           <div className="w-full h-full flex items-center justify-center">
             <img
               src={signinImg}
               alt="Memora Sign In Visual"
-              className="max-w-full max-h-[106vh] object-cover select-none"
+              className="max-w-full max-h-[106vh] object-cover select-none opacity-90"
             />
           </div>
         </div>
 
         {/* ══════════════════════════════════════
-            RIGHT PANEL — Payoneer-Style Light Signin Form
+            RIGHT PANEL — Glassmorphic Signin Form
         ══════════════════════════════════════ */}
-        <div className="flex-1 bg-white rounded-t-[28px] lg:rounded-t-none lg:rounded-r-[36px] flex flex-col justify-between p-8 sm:p-12 xl:p-16 h-full overflow-y-auto lg:overflow-hidden">
+        <div className="flex-1 bg-white/[0.07] backdrop-blur-3xl rounded-t-[28px] lg:rounded-t-none lg:rounded-r-[36px] flex flex-col justify-between p-8 sm:p-12 xl:p-16 h-full overflow-y-auto lg:overflow-hidden border-t lg:border-t-0 lg:border-l border-white/15 shadow-[inset_0_1px_1px_rgba(255,255,255,0.15)]">
 
           {/* Top Bar: Logo Left, Sign Up Right */}
           <div className="flex items-center justify-between flex-shrink-0">
@@ -85,14 +85,14 @@ export function Signin() {
               <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-tr from-orange-500 to-pink-500 text-white shadow-md group-hover:opacity-90 transition-opacity">
                 <Logo className="w-5 h-5 text-white" />
               </div>
-              <span className="text-xl font-bold text-gray-900 tracking-tight">Memora</span>
+              <span className="text-xl font-bold text-white tracking-tight">Memora</span>
             </Link>
 
             <Link
               to="/signup"
-              className="flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-gray-600 hover:text-orange-500 transition-colors py-1.5 px-3 rounded-full hover:bg-gray-50"
+              className="flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-white/80 hover:text-white transition-colors py-1.5 px-3.5 rounded-full bg-white/5 hover:bg-white/15 border border-white/10 backdrop-blur-md"
             >
-              <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4 text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
               </svg>
               Sign Up
@@ -103,14 +103,14 @@ export function Signin() {
           <div className="my-auto py-6 w-full max-w-[400px] sm:max-w-[440px] mx-auto flex-shrink-0">
 
             {/* Title */}
-            <h2 className="text-3xl sm:text-4xl font-semibold text-[#1a1a1a] tracking-tight mb-8">
+            <h2 className="text-3xl sm:text-4xl font-semibold text-white tracking-tight mb-8">
               Sign In
             </h2>
 
             {/* Error Banner */}
             {error && (
-              <div className="mb-6 flex items-center gap-2.5 rounded-2xl bg-red-50 border border-red-200 px-4 py-3 text-xs text-red-600">
-                <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="mb-6 flex items-center gap-2.5 rounded-2xl bg-red-500/15 border border-red-500/30 px-4 py-3 text-xs text-red-200 backdrop-blur-md">
+                <svg className="w-4 h-4 shrink-0 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <circle cx="12" cy="12" r="10" strokeWidth="2"/>
                   <line x1="12" y1="8" x2="12" y2="12" strokeWidth="2"/>
                   <line x1="12" y1="16" x2="12.01" y2="16" strokeWidth="2"/>
@@ -124,7 +124,7 @@ export function Signin() {
 
               {/* Input 1: Email or Username */}
               <div>
-                <div className={`rounded-full border bg-white px-6 py-3.5 transition-all duration-200 shadow-sm ${userFocus ? "border-orange-500 ring-2 ring-orange-500/15" : "border-gray-200 hover:border-gray-300"}`}>
+                <div className={`rounded-full border bg-white/10 backdrop-blur-md px-6 py-3.5 transition-all duration-200 shadow-inner ${userFocus ? "border-orange-400 ring-2 ring-orange-500/25 bg-white/15" : "border-white/20 hover:border-white/35"}`}>
                   <input
                     ref={usernameRef}
                     type="text"
@@ -140,14 +140,14 @@ export function Signin() {
                       }
                     }}
                     placeholder="Email or Username"
-                    className="w-full bg-transparent text-sm sm:text-base font-normal text-gray-900 outline-none placeholder:text-gray-400"
+                    className="w-full bg-transparent text-sm sm:text-base font-normal text-white outline-none placeholder:text-white/50"
                   />
                 </div>
               </div>
 
               {/* Input 2: Password */}
               <div>
-                <div className={`rounded-full border bg-white px-6 py-3.5 transition-all duration-200 shadow-sm flex items-center justify-between ${passFocus ? "border-orange-500 ring-2 ring-orange-500/15" : "border-gray-200 hover:border-gray-300"}`}>
+                <div className={`rounded-full border bg-white/10 backdrop-blur-md px-6 py-3.5 transition-all duration-200 shadow-inner flex items-center justify-between ${passFocus ? "border-orange-400 ring-2 ring-orange-500/25 bg-white/15" : "border-white/20 hover:border-white/35"}`}>
                   <input
                     ref={passwordRef}
                     type={showPass ? "text" : "password"}
@@ -155,12 +155,12 @@ export function Signin() {
                     onFocus={() => setPassFocus(true)}
                     onBlur={() =>  setPassFocus(false)}
                     placeholder="Password"
-                    className="w-full bg-transparent text-sm sm:text-base font-normal text-gray-900 outline-none placeholder:text-gray-400"
+                    className="w-full bg-transparent text-sm sm:text-base font-normal text-white outline-none placeholder:text-white/50"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPass(!showPass)}
-                    className="text-gray-400 hover:text-gray-600 transition-colors pl-2 shrink-0"
+                    className="text-white/60 hover:text-white transition-colors pl-2 shrink-0 cursor-pointer"
                     aria-label={showPass ? "Hide password" : "Show password"}
                   >
                     {showPass ? (
@@ -179,7 +179,7 @@ export function Signin() {
 
               {/* Forgot password link */}
               <div className="pl-3 pt-0.5">
-                <a href="#" className="text-xs sm:text-sm font-semibold text-[#ff5226] hover:underline">
+                <a href="#" className="text-xs sm:text-sm font-medium text-orange-400 hover:text-orange-300 hover:underline transition-colors">
                   Forgot password?
                 </a>
               </div>
@@ -189,7 +189,7 @@ export function Signin() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full py-3.5 sm:py-4 rounded-full bg-gradient-to-r from-[#ff4500] to-[#ff0066] hover:opacity-95 text-white font-semibold text-base shadow-lg shadow-[#ff4500]/25 transition-all duration-200 flex items-center justify-center gap-2 active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full py-3.5 sm:py-4 rounded-full bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 text-white font-semibold text-base shadow-lg shadow-orange-500/25 transition-all duration-200 flex items-center justify-center gap-2 active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                 >
                   {loading ? (
                     "Signing in..."
@@ -209,11 +209,11 @@ export function Signin() {
           </div>
 
           {/* Bottom Footer Bar */}
-          <div className="flex items-center justify-between text-[11px] sm:text-xs text-gray-400 flex-shrink-0 pt-4 border-t border-gray-100">
+          <div className="flex items-center justify-between text-[11px] sm:text-xs text-white/50 flex-shrink-0 pt-4 border-t border-white/10">
             <span>© {new Date().getFullYear()} Memora Inc.</span>
             <div className="flex items-center gap-4">
-              <a href="#" className="hover:text-gray-600 transition-colors">Contact Us</a>
-              <span className="flex items-center gap-1 cursor-pointer hover:text-gray-600 transition-colors">
+              <a href="#" className="hover:text-white/80 transition-colors">Contact Us</a>
+              <span className="flex items-center gap-1 cursor-pointer hover:text-white/80 transition-colors">
                 English
                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />

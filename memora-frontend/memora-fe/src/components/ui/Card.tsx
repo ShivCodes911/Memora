@@ -3,6 +3,7 @@ import { ShareIcon } from "../../icons/shareIcon";
 import { Delete } from "../../icons/delete";
 import { YoutubeIcon } from "../../icons/youtube";
 import { TwitterIcon } from "../../icons/twitter";
+import { PdfIcon } from "../../icons/pdfIcon";
 import type { ContentType } from "../../types/content";
 import axios from "axios";
 import { BACKEND_URL } from "../../config";
@@ -51,9 +52,25 @@ function getYouTubeEmbedUrl(link: string) {
   }
 }
 
+function getPdfViewerUrl(link: string) {
+  try {
+    const rawUrl = link.startsWith("http") ? link : `https://${link}`;
+    if (rawUrl.includes("drive.google.com/file/d/")) {
+      const fileId = rawUrl.split("drive.google.com/file/d/")[1]?.split("/")[0];
+      if (fileId) {
+        return `https://drive.google.com/file/d/${fileId}/preview`;
+      }
+    }
+    return `https://docs.google.com/gview?url=${encodeURIComponent(rawUrl)}&embedded=true`;
+  } catch {
+    return link;
+  }
+}
+
 export const Card = ({ _id, title, link, type, onDelete, onCopyToast, isDark }: CardProps) => {
     const [metadata, setMetadata] = useState<LinkMetadata | null>(null);
     const [imgError, setImgError] = useState(false);
+    const [readerOpen, setReaderOpen] = useState(false);
 
     // Twitter widget loader
     useEffect(() => {
@@ -71,7 +88,7 @@ export const Card = ({ _id, title, link, type, onDelete, onCopyToast, isDark }: 
         }
     }, [type, link, isDark]);
 
-    // Fetch OG metadata for article-type cards
+    // Fetch OG metadata for non-media cards
     useEffect(() => {
         if (type === "youtube" || type === "twitter") return;
         let cancelled = false;
@@ -95,10 +112,13 @@ export const Card = ({ _id, title, link, type, onDelete, onCopyToast, isDark }: 
         }
     };
 
-    const isArticle = type !== "youtube" && type !== "twitter";
+    const isPdf = type === "pdf";
+    const isArticle = type !== "youtube" && type !== "twitter" && type !== "pdf";
     const hasImage = isArticle && metadata?.image && !imgError;
+    const domainName = metadata?.domain || (() => { try { return new URL(link.startsWith("http") ? link : `https://${link}`).hostname; } catch { return ""; } })();
 
     return (
+        <>
         <div className={`rounded-2xl border p-5 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col w-full h-[400px] hover:-translate-y-1 group relative overflow-hidden ${
             isDark 
                 ? "bg-[#1e1d1b] border-white/10 text-gray-100 hover:border-purple-500/40 shadow-black/40" 
@@ -112,10 +132,12 @@ export const Card = ({ _id, title, link, type, onDelete, onCopyToast, isDark }: 
                     <div className={`p-2 rounded-xl shrink-0 ${
                         type === "youtube" ? (isDark ? "bg-red-500/15 text-red-400" : "bg-red-50 text-red-500") :
                         type === "twitter" ? (isDark ? "bg-sky-500/15 text-sky-400" : "bg-sky-50 text-sky-500") : 
+                        type === "pdf" ? (isDark ? "bg-red-500/20 text-red-400" : "bg-red-50 text-red-600") :
                         (isDark ? "bg-purple-500/15 text-purple-400" : "bg-purple-50 text-purple-600")
                     }`}>
                         {type === "youtube" && <YoutubeIcon />}
                         {type === "twitter" && <TwitterIcon />}
+                        {type === "pdf" && <PdfIcon className="w-5 h-5 text-red-500" />}
                         {isArticle && (
                             metadata?.favicon ? (
                                 <img src={metadata.favicon} alt="" className="w-5 h-5 rounded-sm" />
@@ -133,7 +155,7 @@ export const Card = ({ _id, title, link, type, onDelete, onCopyToast, isDark }: 
                             {title}
                         </h3>
                         <span className={`text-[11px] font-semibold capitalize ${isDark ? "text-gray-400" : "text-gray-400"}`}>
-                            {isArticle && metadata?.domain ? metadata.domain : type}
+                            {domainName || type}
                         </span>
                     </div>
                 </div>
@@ -182,6 +204,47 @@ export const Card = ({ _id, title, link, type, onDelete, onCopyToast, isDark }: 
                         <blockquote className="twitter-tweet m-0" data-theme={isDark ? "dark" : "light"}>
                             <a href={link.replace("x.com", "twitter.com")}></a>
                         </blockquote>
+                    </div>
+                )}
+
+                {type === "pdf" && (
+                    <div className="h-full flex flex-col rounded-xl border border-red-500/20 bg-gradient-to-b from-[#221515] via-[#1a1818] to-[#141212] overflow-hidden p-4 justify-between">
+                        <div className="flex flex-col gap-3">
+                            <div className="flex items-center gap-3">
+                                <div className="w-12 h-12 rounded-xl bg-red-500/15 border border-red-500/20 flex items-center justify-center shrink-0">
+                                    <PdfIcon className="w-7 h-7 text-red-500" />
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                    <span className="text-[10px] font-bold uppercase tracking-wider text-red-400 block">PDF Document</span>
+                                    <h4 className="text-sm font-bold text-white line-clamp-1 mt-0.5">{title}</h4>
+                                    <span className="text-[11px] text-gray-400 block truncate">{domainName}</span>
+                                </div>
+                            </div>
+                            
+                            <div className="p-3 rounded-xl bg-white/5 border border-white/5 text-xs text-gray-300 leading-relaxed flex items-start gap-2">
+                                <span className="text-red-400 text-sm">📄</span>
+                                <span className="line-clamp-2">Click below to open full distraction-free document reader or original link.</span>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 pt-3 border-t border-white/10">
+                            <button
+                                type="button"
+                                onClick={() => setReaderOpen(true)}
+                                className="flex-1 py-2.5 px-3 rounded-xl bg-red-600 hover:bg-red-700 active:scale-95 text-white text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-md cursor-pointer"
+                            >
+                                <span>Read Document 📖</span>
+                            </button>
+                            <a
+                                href={link}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="py-2.5 px-3 rounded-xl bg-white/10 hover:bg-white/20 active:scale-95 text-gray-200 text-xs font-semibold transition-all flex items-center gap-1 cursor-pointer"
+                                title="Open Original Link"
+                            >
+                                <span>Link ↗️</span>
+                            </a>
+                        </div>
                     </div>
                 )}
 
@@ -245,5 +308,54 @@ export const Card = ({ _id, title, link, type, onDelete, onCopyToast, isDark }: 
                 )}
             </div>
         </div>
+
+        {/* Full-Screen PDF Reader Modal Overlay */}
+        {readerOpen && (
+            <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex flex-col p-3 sm:p-6 animate-in fade-in duration-200">
+                {/* Modal Header */}
+                <div className="flex items-center justify-between pb-3 border-b border-white/10 text-white shrink-0">
+                    <div className="flex items-center gap-3 min-w-0">
+                        <div className="p-2 rounded-xl bg-red-500/20 text-red-400 shrink-0">
+                            <PdfIcon className="w-5 h-5 text-red-400" />
+                        </div>
+                        <div className="min-w-0">
+                            <h3 className="font-bold text-base text-white truncate max-w-md sm:max-w-xl">{title}</h3>
+                            <span className="text-xs text-gray-400 block truncate">{domainName || "PDF Document"}</span>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-3 shrink-0">
+                        <a
+                            href={link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-3.5 py-1.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-semibold transition-all flex items-center gap-1.5 shadow-md cursor-pointer"
+                        >
+                            <span>Open Original</span>
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                            </svg>
+                        </a>
+                        <button
+                            type="button"
+                            onClick={() => setReaderOpen(false)}
+                            className="p-2 rounded-xl text-gray-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer text-base font-bold flex items-center justify-center w-9 h-9 border border-white/10"
+                            title="Close Reader (ESC)"
+                        >
+                            ✕
+                        </button>
+                    </div>
+                </div>
+
+                {/* Main Full-Height Viewer Container */}
+                <div className="flex-1 w-full mt-3 rounded-2xl overflow-hidden border border-white/10 bg-[#121212] shadow-2xl relative">
+                    <iframe
+                        src={getPdfViewerUrl(link)}
+                        className="w-full h-full border-0"
+                        title={title}
+                    />
+                </div>
+            </div>
+        )}
+        </>
     );
 };

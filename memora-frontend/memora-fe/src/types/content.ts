@@ -1,4 +1,4 @@
-export type ContentType ="youtube" | "twitter" | "image"| "video"| "article"| "audio";
+export type ContentType ="youtube" | "twitter" | "image"| "video"| "article"| "audio" | "pdf";
 
 export interface Content {
   _id: string;

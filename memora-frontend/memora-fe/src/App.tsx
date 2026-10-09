@@ -19,7 +19,6 @@ import { SharedPage } from "./pages/sharedPage";
   </Routes> 
   
   </BrowserRouter>
-
 }
 
 export default App;

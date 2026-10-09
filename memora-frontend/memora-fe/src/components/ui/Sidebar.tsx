@@ -48,7 +48,6 @@ export function Sidebar({
             </div>
             <div>
               <span className="text-sm font-bold tracking-tight text-white block">Memora</span>
-              <span className="text-[10px] font-medium text-gray-400">Minimal Vault</span>
             </div>
           </a>
 

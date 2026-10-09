@@ -7,6 +7,7 @@ import type { ContentType } from "../../types/content";
 
 import { YoutubeIcon } from "../../icons/youtube";
 import { TwitterIcon } from "../../icons/twitter";
+import { PdfIcon } from "../../icons/pdfIcon";
 
 interface ContentModalProps {
     open: boolean;
@@ -26,11 +27,12 @@ interface LinkMetadata {
 const TYPES: { label: string; value: ContentType; renderIcon: () => React.ReactNode }[] = [
     { label: "YouTube", value: "youtube", renderIcon: () => <YoutubeIcon /> },
     { label: "Twitter / X", value: "twitter", renderIcon: () => <TwitterIcon /> },
-    { label: "Article / Link", value: "article", renderIcon: () => (
+    { label: "Article", value: "article", renderIcon: () => (
         <svg className="w-4 h-4 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
         </svg>
     ) },
+    { label: "PDF Doc", value: "pdf", renderIcon: () => <PdfIcon className="w-4 h-4 text-red-500" /> },
 ];
 
 function isValidUrl(str: string): boolean {
@@ -91,7 +93,9 @@ export function CreateContentModal({ open, onClose, type: initialType = "youtube
         const rawVal = e.target.value.trim();
         const val = rawVal.toLowerCase();
 
-        if (val.includes("youtube.com") || val.includes("youtu.be")) {
+        if (val.includes(".pdf") || val.includes("/pdf") || val.includes("arxiv.org/pdf")) {
+            setType("pdf");
+        } else if (val.includes("youtube.com") || val.includes("youtu.be")) {
             setType("youtube");
         } else if (val.includes("x.com") || val.includes("twitter.com")) {
             setType("twitter");
@@ -176,7 +180,7 @@ export function CreateContentModal({ open, onClose, type: initialType = "youtube
                         <label className="text-xs font-bold text-gray-400 uppercase tracking-wider block mb-2">
                             Select Type
                         </label>
-                        <div className="grid grid-cols-3 gap-2">
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                             {TYPES.map((t) => (
                                 <button
                                     key={t.value}
@@ -209,7 +213,7 @@ export function CreateContentModal({ open, onClose, type: initialType = "youtube
                                 ref={linkRef}
                                 type="text"
                                 onChange={handleLinkChange}
-                                placeholder="https://youtube.com/watch?v=... or https://x.com/..."
+                                placeholder="https://youtube.com/..., https://arxiv.org/pdf/... or PDF URL"
                                 className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:border-purple-600 focus:ring-2 focus:ring-purple-600/15 outline-none transition-all"
                             />
                             {fetchingMeta && (
