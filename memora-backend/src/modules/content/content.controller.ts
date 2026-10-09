@@ -17,11 +17,17 @@ export const addContent=async(req:Request,res:Response)=>{
             })
         }
 
+        if(!link || !type || !title){
+            return res.status(400).json({
+                message:"Link, type, and title are required."
+            })
+        }
+
        const content=await contentModel.create({
             link,
             type,
             title,
-            tags:[],
+            tags:tags || [],
             userId:userId
         });
 
@@ -29,11 +35,17 @@ export const addContent=async(req:Request,res:Response)=>{
             message:"Content created SuccessFully",
             content
         });
-    } catch (error) {
-        console.error("failed",error);
-        
+    } catch (error: any) {
+        console.error("Failed to add content:", error);
+        if (error.code === 11000) {
+            return res.status(400).json({
+                message: "You have already saved this link to your vault."
+            });
+        }
+        return res.status(500).json({
+            message: error.message || "Failed to create content"
+        });
     }
-
 };
 
 // diaplays the added content on the screen 
@@ -48,19 +60,18 @@ export const fetchContent=async(req:Request,res:Response)=>{
         }
         const content=await contentModel.find({
             userId:userId
-    }).populate("userId","username");
+        }).populate("userId","username");
 
-    return res.status(200).json({
-        message:"Here is your content",
-        content:content
-    })
-
-    
-} catch (error) {
-        console.error("failed",error);
-        
+        return res.status(200).json({
+            message:"Here is your content",
+            content:content
+        })
+    } catch (error: any) {
+        console.error("Failed to fetch content:", error);
+        return res.status(500).json({
+            message: error.message || "Failed to fetch content"
+        });
     }
-
 };
 
 export const deleteContent=async(req:Request,res:Response)=>{
