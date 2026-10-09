@@ -4,6 +4,7 @@ interface contentSchemaBody {
     link:string;
     type:string | Enumerator;
     title:string;
+    description?:string;
     tags:mongoose.Types.ObjectId[];
     userId:mongoose.Types.ObjectId;
 };
@@ -15,6 +16,7 @@ const contentSchema=new mongoose.Schema <contentSchemaBody> ({
     link:{type:String,required:true,unique:true},
     type:{type:String,enum:contentType,required:true},
     title:{type:String,required:true},
+    description:{type:String,default:""},
     tags:[{type:mongoose.Schema.Types.ObjectId,ref:"Tag"}],
     userId:{type:mongoose.Schema.Types.ObjectId,ref:"User",required:true}
 });

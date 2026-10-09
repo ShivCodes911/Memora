@@ -5,4 +5,5 @@ export interface Content {
   title: string;
   link: string;
   type: ContentType;
+  description?: string;
 }

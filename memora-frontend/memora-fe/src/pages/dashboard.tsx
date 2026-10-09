@@ -167,6 +167,26 @@ export function Dashboard() {
     return true;
   });
 
+  // Responsive Column Distribution (Serial Order Across Independent Columns)
+  const [numCols, setNumCols] = useState(1);
+  useEffect(() => {
+    const updateCols = () => {
+      const w = window.innerWidth;
+      if (w >= 1536) setNumCols(4);       // 2xl
+      else if (w >= 1280) setNumCols(3);  // xl
+      else if (w >= 640) setNumCols(2);   // sm
+      else setNumCols(1);                 // xs
+    };
+    updateCols();
+    window.addEventListener("resize", updateCols);
+    return () => window.removeEventListener("resize", updateCols);
+  }, []);
+
+  const columns: (typeof filteredContents)[] = Array.from({ length: numCols }, () => []);
+  filteredContents.forEach((item, idx) => {
+    columns[idx % numCols].push(item);
+  });
+
   return (
     <div className="h-screen w-screen bg-[#191919] text-gray-200 font-sans flex overflow-hidden relative">
 
@@ -237,19 +257,24 @@ export function Dashboard() {
               isDark={true}
             />
           ) : (
-            /* Grid of Content Cards */
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
-              {filteredContents.map(({ _id, type, link, title }) => (
-                <Card
-                  key={_id}
-                  _id={_id}
-                  type={type}
-                  link={link}
-                  title={title}
-                  onDelete={handleDelete}
-                  onCopyToast={showToast}
-                  isDark={true}
-                />
+            /* Independent Column Masonry Grid (Serial Top-Left Distribution & Zero Cross-Column Shift) */
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6 items-start">
+              {columns.map((colItems, colIdx) => (
+                <div key={colIdx} className="flex flex-col gap-6">
+                  {colItems.map(({ _id, type, link, title, description }) => (
+                    <Card
+                      key={_id}
+                      _id={_id}
+                      type={type}
+                      link={link}
+                      title={title}
+                      description={description}
+                      onDelete={handleDelete}
+                      onCopyToast={showToast}
+                      isDark={true}
+                    />
+                  ))}
+                </div>
               ))}
             </div>
           )}

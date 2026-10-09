@@ -47,6 +47,7 @@ function isValidUrl(str: string): boolean {
 export function CreateContentModal({ open, onClose, type: initialType = "youtube", onSuccess }: ContentModalProps) {
     const titleRef = useRef<HTMLInputElement | null>(null);
     const linkRef = useRef<HTMLInputElement | null>(null);
+    const descRef = useRef<HTMLTextAreaElement | null>(null);
     const [type, setType] = useState<ContentType>(initialType);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -120,6 +121,7 @@ export function CreateContentModal({ open, onClose, type: initialType = "youtube
 
         const title = titleRef.current?.value?.trim();
         const link = linkRef.current?.value?.trim();
+        const description = descRef.current?.value?.trim() || "";
 
         if (!title || !link) {
             setError("Please fill in both title and link URL.");
@@ -130,7 +132,7 @@ export function CreateContentModal({ open, onClose, type: initialType = "youtube
             setLoading(true);
             await axios.post(
                 `${BACKEND_URL}/api/v1/content`,
-                { link, type, title },
+                { link, type, title, description },
                 {
                     headers: {
                         Authorization: `Bearer ${localStorage.getItem("token")}`
@@ -151,12 +153,12 @@ export function CreateContentModal({ open, onClose, type: initialType = "youtube
 
     return (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="bg-white rounded-3xl border border-gray-100 shadow-2xl w-full max-w-lg overflow-hidden p-6 sm:p-8 relative">
+            <div className="bg-white rounded-3xl border border-gray-100 shadow-2xl w-full max-w-lg overflow-hidden p-6 sm:p-8 relative max-h-[90vh] overflow-y-auto">
                 {/* Header */}
                 <div className="flex items-center justify-between pb-5 border-b border-gray-100">
                     <div>
                         <h2 className="text-2xl font-bold text-gray-900 tracking-tight">Add New Memory</h2>
-                        <p className="text-xs text-gray-500 mt-0.5">Save YouTube videos, tweets, or articles to your second brain</p>
+                        <p className="text-xs text-gray-500 mt-0.5">Save YouTube videos, tweets, articles or PDFs to your second brain</p>
                     </div>
                     <button 
                         onClick={onClose}
@@ -270,6 +272,19 @@ export function CreateContentModal({ open, onClose, type: initialType = "youtube
                             onChange={() => setTitleManuallyEdited(true)}
                             placeholder="e.g. Building Next-Gen Web Apps with React"
                             className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:border-purple-600 focus:ring-2 focus:ring-purple-600/15 outline-none transition-all"
+                        />
+                    </div>
+
+                    {/* Description / Personal Notes Input */}
+                    <div>
+                        <label className="text-xs font-bold text-gray-400 uppercase tracking-wider block mb-1.5">
+                            Personal Notes / Description <span className="text-gray-400 font-normal lowercase">(optional)</span>
+                        </label>
+                        <textarea
+                            ref={descRef}
+                            rows={2}
+                            placeholder="for about this video..."
+                            className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:border-purple-600 focus:ring-2 focus:ring-purple-600/15 outline-none transition-all resize-none"
                         />
                     </div>
 

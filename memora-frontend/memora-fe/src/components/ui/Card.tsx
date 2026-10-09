@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { ShareIcon } from "../../icons/shareIcon";
 import { Delete } from "../../icons/delete";
 import { YoutubeIcon } from "../../icons/youtube";
@@ -23,6 +23,7 @@ interface CardProps {
     title: string;
     link: string;
     type: ContentType;
+    description?: string;
     onDelete: (id: string) => void;
     onCopyToast?: (msg: string) => void;
     isDark?: boolean;
@@ -52,6 +53,27 @@ function getYouTubeEmbedUrl(link: string) {
   }
 }
 
+function getYouTubeVideoId(link: string): string | null {
+  try {
+    if (!link) return null;
+    if (link.includes("youtu.be/")) {
+      return link.split("youtu.be/")[1]?.split("?")[0]?.split("&")[0] || null;
+    }
+    if (link.includes("watch?v=")) {
+      return link.split("watch?v=")[1]?.split("&")[0] || null;
+    }
+    if (link.includes("embed/")) {
+      return link.split("embed/")[1]?.split("?")[0]?.split("&")[0] || null;
+    }
+    if (link.includes("shorts/")) {
+      return link.split("shorts/")[1]?.split("?")[0]?.split("&")[0] || null;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 function getPdfViewerUrl(link: string) {
   try {
     const rawUrl = link.startsWith("http") ? link : `https://${link}`;
@@ -67,10 +89,47 @@ function getPdfViewerUrl(link: string) {
   }
 }
 
-export const Card = ({ _id, title, link, type, onDelete, onCopyToast, isDark }: CardProps) => {
+export const Card = ({ _id, title, link, type, description, onDelete, onCopyToast, isDark }: CardProps) => {
     const [metadata, setMetadata] = useState<LinkMetadata | null>(null);
     const [imgError, setImgError] = useState(false);
     const [readerOpen, setReaderOpen] = useState(false);
+    
+    // Description state
+    const [descText, setDescText] = useState(description || "");
+    const [isEditingDesc, setIsEditingDesc] = useState(false);
+    const [isSavingDesc, setIsSavingDesc] = useState(false);
+    const [isNoteExpanded, setIsNoteExpanded] = useState(false);
+    const [thumbError, setThumbError] = useState(false);
+    const [playerOpen, setPlayerOpen] = useState(false);
+
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+    const adjustTextareaHeight = () => {
+        const el = textareaRef.current;
+        if (!el) return;
+        el.style.height = "auto";
+        el.style.height = `${Math.max(68, el.scrollHeight)}px`;
+    };
+
+    useEffect(() => {
+        setDescText(description || "");
+        setIsNoteExpanded(false);
+    }, [description]);
+
+    useEffect(() => {
+        if (isEditingDesc) {
+            requestAnimationFrame(() => {
+                adjustTextareaHeight();
+                const el = textareaRef.current;
+                if (el) {
+                    el.focus();
+                    const len = el.value.length;
+                    el.setSelectionRange(len, len);
+                    el.scrollTop = el.scrollHeight;
+                }
+            });
+        }
+    }, [isEditingDesc]);
 
     // Twitter widget loader
     useEffect(() => {
@@ -112,14 +171,43 @@ export const Card = ({ _id, title, link, type, onDelete, onCopyToast, isDark }: 
         }
     };
 
+    const handleSaveDescription = async () => {
+        try {
+            setIsSavingDesc(true);
+            await axios.put(
+                `${BACKEND_URL}/api/v1/content/${_id}`,
+                { description: descText },
+                {
+                    headers: {
+                        Authorization: `Bearer ${localStorage.getItem("token")}`
+                    }
+                }
+            );
+            setIsEditingDesc(false);
+            setIsNoteExpanded(false);
+            if (onCopyToast) onCopyToast("Description saved 📝");
+        } catch (err) {
+            console.error("Save description failed", err);
+            if (onCopyToast) onCopyToast("Failed to save description");
+        } finally {
+            setIsSavingDesc(false);
+        }
+    };
+
     const isPdf = type === "pdf";
     const isArticle = type !== "youtube" && type !== "twitter" && type !== "pdf";
     const hasImage = isArticle && metadata?.image && !imgError;
     const domainName = metadata?.domain || (() => { try { return new URL(link.startsWith("http") ? link : `https://${link}`).hostname; } catch { return ""; } })();
+    const ytVideoId = getYouTubeVideoId(link);
+    const ytThumbnailUrl = ytVideoId ? `https://img.youtube.com/vi/${ytVideoId}/hqdefault.jpg` : null;
 
     return (
         <>
-        <div className={`rounded-2xl border p-5 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col w-full h-[400px] hover:-translate-y-1 group relative overflow-hidden ${
+        <div className={`rounded-2xl border p-5 shadow-sm hover:shadow-xl transition-[max-height,shadow,transform] duration-300 ease-out flex flex-col w-full hover:-translate-y-1 group relative overflow-hidden ${
+            type === "youtube"
+                ? (isNoteExpanded || isEditingDesc ? "max-h-[1200px] h-auto pb-6" : "max-h-[600px] h-auto")
+                : "h-[420px]"
+        } ${
             isDark 
                 ? "bg-[#1e1d1b] border-white/10 text-gray-100 hover:border-purple-500/40 shadow-black/40" 
                 : "bg-white border-gray-200/80 text-gray-800"
@@ -184,18 +272,223 @@ export const Card = ({ _id, title, link, type, onDelete, onCopyToast, isDark }: 
             </div>
 
             {/* Card Content Body */}
-            <div className="pt-4 flex-1 flex flex-col min-h-0 overflow-hidden">
-                {type === "youtube" && (
-                    <iframe 
-                        className={`w-full h-full rounded-xl border bg-black ${isDark ? "border-white/10" : "border-gray-100"}`}
-                        src={getYouTubeEmbedUrl(link)}
-                        title={title} 
-                        frameBorder="0" 
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
-                        referrerPolicy="strict-origin-when-cross-origin" 
-                        allowFullScreen
-                    />
-                )}
+            <div className={`pt-3 flex flex-col ${type === "youtube" ? "w-full" : "flex-1 min-h-0 overflow-hidden"}`}>
+                {type === "youtube" && (() => {
+                    // Split text into initial 2-line head and remaining tail for clean symmetrical preview
+                    const lines = descText.split("\n");
+                    const hasLineBreaks = lines.length > 2;
+                    let headText = descText;
+                    let tailText = "";
+
+                    if (hasLineBreaks) {
+                        headText = lines.slice(0, 2).join("\n");
+                        tailText = lines.slice(2).join("\n");
+                    } else if (descText.length > 70) {
+                        const breakIdx = descText.lastIndexOf(" ", 70);
+                        const splitAt = breakIdx > 35 ? breakIdx : 70;
+                        headText = descText.slice(0, splitAt);
+                        tailText = descText.slice(splitAt);
+                    }
+
+                    const isLongText = Boolean(tailText);
+
+                    return (
+                    <div className="flex flex-col gap-2.5 w-full">
+                        {/* 1. YouTube Thumbnail — 16:9 Aspect Ratio (Stable & Fixed in normal flow) */}
+                        <div 
+                            onClick={() => setPlayerOpen(true)}
+                            className="relative w-full aspect-video rounded-xl overflow-hidden bg-black/60 border border-white/10 group/thumb cursor-pointer shrink-0 shadow-md"
+                        >
+                            {ytThumbnailUrl && !thumbError ? (
+                                <img
+                                    src={ytThumbnailUrl}
+                                    alt={title}
+                                    className="w-full h-full object-cover transition-transform duration-300 group-hover/thumb:scale-105"
+                                    onError={() => setThumbError(true)}
+                                />
+                            ) : (
+                                <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-red-950/40 via-[#18181b] to-black gap-2 p-4">
+                                    <div className="p-3 rounded-2xl bg-red-600/20 text-red-500 border border-red-500/20">
+                                        <YoutubeIcon />
+                                    </div>
+                                    <span className="text-xs text-gray-400 font-mono">YouTube Video</span>
+                                </div>
+                            )}
+                            
+                            {/* Play Button Overlay */}
+                            <div className="absolute inset-0 bg-black/20 group-hover/thumb:bg-black/50 transition-colors flex items-center justify-center">
+                                <div className="w-10 h-10 rounded-2xl bg-red-600/90 text-white flex items-center justify-center shadow-lg transition-transform group-hover/thumb:scale-110">
+                                    <svg className="w-5 h-5 fill-current ml-0.5" viewBox="0 0 24 24">
+                                        <path d="M8 5v14l11-7z"/>
+                                    </svg>
+                                </div>
+                            </div>
+
+                            <span className="absolute bottom-1.5 right-1.5 text-[9px] font-bold uppercase tracking-wider bg-black/80 backdrop-blur-xs text-white px-1.5 py-0.5 rounded-md border border-white/10">
+                                16:9
+                            </span>
+                        </div>
+
+                        {/* 2. Video Title (Stable & Fixed in normal flow) */}
+                        <h4 className="text-xs font-bold text-gray-100 truncate shrink-0 tracking-tight" title={title}>
+                            {title}
+                        </h4>
+
+                        {/* 3. Description Note & Editor Section (Dual Persistent Grid Slots for Smooth Transitions) */}
+                        <div className="w-full">
+                            {/* 1. Edit Mode Accordion Slot */}
+                            <div 
+                                className="grid transition-all duration-250 ease-out overflow-hidden"
+                                style={{
+                                    gridTemplateRows: isEditingDesc ? "1fr" : "0fr",
+                                    opacity: isEditingDesc ? 1 : 0,
+                                    transitionProperty: "grid-template-rows, opacity",
+                                    transitionDuration: "250ms",
+                                    transitionTimingFunction: "cubic-bezier(0.4, 0, 0.2, 1)",
+                                    pointerEvents: isEditingDesc ? "auto" : "none"
+                                }}
+                            >
+                                <div className="overflow-hidden min-h-0">
+                                    <div className="flex flex-col rounded-xl bg-[#141414] border border-white/10 focus-within:border-purple-500/40 focus-within:ring-1 focus-within:ring-purple-500/20 p-2.5 shadow-inner">
+                                        <textarea
+                                            ref={textareaRef}
+                                            value={descText}
+                                            onChange={(e) => {
+                                                setDescText(e.target.value);
+                                                adjustTextareaHeight();
+                                            }}
+                                            placeholder="Write a note about this video..."
+                                            rows={2}
+                                            className="w-full bg-transparent text-xs text-gray-200 placeholder:text-gray-500/80 outline-none resize-none leading-relaxed font-normal overflow-hidden"
+                                        />
+                                        <div className="flex items-center justify-end gap-2 pt-2 mt-1 border-t border-white/5">
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setDescText(description || "");
+                                                    setIsEditingDesc(false);
+                                                    setIsNoteExpanded(false);
+                                                }}
+                                                className="px-2.5 py-1 rounded-lg text-xs font-medium text-gray-400 hover:text-gray-200 hover:bg-white/5 transition-colors cursor-pointer"
+                                            >
+                                                Cancel
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={handleSaveDescription}
+                                                disabled={isSavingDesc}
+                                                className="px-3 py-1 rounded-lg text-xs font-semibold bg-purple-600 hover:bg-purple-500 active:scale-[0.98] text-white shadow-sm transition-all disabled:opacity-50 cursor-pointer flex items-center gap-1.5"
+                                            >
+                                                {isSavingDesc ? (
+                                                    <>
+                                                        <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                                        <span>Saving...</span>
+                                                    </>
+                                                ) : (
+                                                    <span>Save Note</span>
+                                                )}
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* 2. View Mode Accordion Slot */}
+                            {descText ? (
+                                <div 
+                                    className="grid transition-all duration-250 ease-out overflow-hidden"
+                                    style={{
+                                        gridTemplateRows: isEditingDesc ? "0fr" : "1fr",
+                                        opacity: isEditingDesc ? 0 : 1,
+                                        transitionProperty: "grid-template-rows, opacity",
+                                        transitionDuration: "250ms",
+                                        transitionTimingFunction: "cubic-bezier(0.4, 0, 0.2, 1)",
+                                        pointerEvents: isEditingDesc ? "none" : "auto"
+                                    }}
+                                >
+                                    <div className="overflow-hidden min-h-0">
+                                        <div
+                                            onClick={() => {
+                                                if (isLongText) {
+                                                    setIsNoteExpanded((prev) => !prev);
+                                                }
+                                            }}
+                                            className={`group/desc text-xs text-gray-300 leading-relaxed p-2.5 rounded-xl bg-[#141414] hover:bg-[#181818] border border-white/5 hover:border-purple-500/30 transition-colors ${
+                                                isLongText ? "cursor-pointer" : ""
+                                            }`}
+                                            title={isLongText ? (isNoteExpanded ? "Click to collapse note" : "Click to expand note") : undefined}
+                                        >
+                                            {/* Head Text (Lines 1-2, always solid at top) */}
+                                            <p className="text-gray-300/90 text-xs leading-relaxed whitespace-pre-wrap">
+                                                {headText}
+                                            </p>
+
+                                            {/* Tail Text (Smooth 250ms Grid Accordion unfolding strictly downward) */}
+                                            {isLongText && (
+                                                <div 
+                                                    className="grid transition-all duration-250 ease-out overflow-hidden"
+                                                    style={{
+                                                        gridTemplateRows: isNoteExpanded ? "1fr" : "0fr",
+                                                        transitionProperty: "grid-template-rows",
+                                                        transitionDuration: "250ms",
+                                                        transitionTimingFunction: "cubic-bezier(0.4, 0, 0.2, 1)"
+                                                    }}
+                                                >
+                                                    <div className="overflow-hidden min-h-0">
+                                                        <p className="text-gray-300/90 text-xs leading-relaxed whitespace-pre-wrap pt-0.5">
+                                                            {tailText}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            <div className="flex items-center justify-between mt-1.5 pt-1 border-t border-white/5 text-[10px] text-gray-500">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="font-medium text-purple-400/80">Saved Note</span>
+                                                    {isLongText && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setIsNoteExpanded((prev) => !prev);
+                                                            }}
+                                                            className="font-semibold text-purple-400 hover:text-purple-300 transition-colors cursor-pointer"
+                                                        >
+                                                            {isNoteExpanded ? "Show less" : "Read more"}
+                                                        </button>
+                                                    )}
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setIsEditingDesc(true);
+                                                    }}
+                                                    className="text-purple-400 hover:text-purple-300 transition-colors cursor-pointer font-semibold flex items-center gap-1 bg-purple-500/10 hover:bg-purple-500/20 px-2 py-0.5 rounded-md border border-purple-500/20"
+                                                    title="Edit description"
+                                                >
+                                                    <span>✎ Edit</span>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            ) : (
+                                /* Empty State: + Add note Action */
+                                <div>
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsEditingDesc(true)}
+                                        className="inline-flex items-center gap-1.5 text-xs text-purple-400/90 hover:text-purple-300 font-medium py-1 px-2.5 rounded-lg bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/20 transition-colors cursor-pointer"
+                                    >
+                                        <span>+ Add note</span>
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                    );
+                })()}
 
                 {type === "twitter" && (
                     <div className={`h-full overflow-y-auto rounded-xl p-3 border ${
@@ -352,6 +645,28 @@ export const Card = ({ _id, title, link, type, onDelete, onCopyToast, isDark }: 
                         src={getPdfViewerUrl(link)}
                         className="w-full h-full border-0"
                         title={title}
+                    />
+                </div>
+            </div>
+        )}
+
+        {/* YouTube Video Player Modal Overlay */}
+        {playerOpen && (
+            <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200">
+                <div className="relative w-full max-w-4xl aspect-video bg-black rounded-2xl overflow-hidden shadow-2xl border border-white/10 flex flex-col">
+                    <button
+                        type="button"
+                        onClick={() => setPlayerOpen(false)}
+                        className="absolute top-3 right-3 z-10 px-3 py-1.5 rounded-xl bg-black/70 hover:bg-black text-white text-xs font-bold border border-white/20 transition-all cursor-pointer shadow-md"
+                    >
+                        ✕ Close Video
+                    </button>
+                    <iframe
+                        src={`${getYouTubeEmbedUrl(link)}?autoplay=1`}
+                        title={title}
+                        className="w-full h-full border-0"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
                     />
                 </div>
             </div>

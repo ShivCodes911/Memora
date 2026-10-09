@@ -8,7 +8,7 @@ import userModel from "../../models/user.model.js";
 
 export const addContent=async(req:Request,res:Response)=>{
     try {
-        const {link,type,title,tags}=req.body;
+        const {link,type,title,description,tags}=req.body;
         const userId=req.userId
 
         if(!userId){
@@ -27,6 +27,7 @@ export const addContent=async(req:Request,res:Response)=>{
             link,
             type,
             title,
+            description: description || "",
             tags:tags || [],
             userId:userId
         });
@@ -44,6 +45,46 @@ export const addContent=async(req:Request,res:Response)=>{
         }
         return res.status(500).json({
             message: error.message || "Failed to create content"
+        });
+    }
+};
+
+export const updateContent = async (req: Request, res: Response) => {
+    try {
+        const userId = req.userId;
+        const contentId = req.params.contentId;
+        const { title, description } = req.body;
+
+        if (!userId) {
+            return res.status(401).json({
+                message: "Unauthorized"
+            });
+        }
+
+        const updateData: any = {};
+        if (title !== undefined) updateData.title = title;
+        if (description !== undefined) updateData.description = description;
+
+        const updatedContent = await contentModel.findOneAndUpdate(
+            { _id: contentId, userId },
+            { $set: updateData },
+            { new: true }
+        );
+
+        if (!updatedContent) {
+            return res.status(404).json({
+                message: "Content not found or unauthorized"
+            });
+        }
+
+        return res.status(200).json({
+            message: "Content updated successfully",
+            content: updatedContent
+        });
+    } catch (error: any) {
+        console.error("Failed to update content:", error);
+        return res.status(500).json({
+            message: error.message || "Failed to update content"
         });
     }
 };

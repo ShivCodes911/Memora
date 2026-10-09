@@ -35,7 +35,7 @@ export function TopBar({
           onMouseLeave={onHamburgerMouseLeave}
           isOpen={isSidebarOpen}
         />
-        <span className="text-xs font-medium text-gray-400 opacity-60 hover:opacity-100 transition-opacity">
+        <span className="text-sm font-medium text-gray-400 opacity-75 hover:opacity-100 transition-opacity">
           Memora
         </span>
       </div>
@@ -49,10 +49,10 @@ export function TopBar({
               value={searchQuery || ""}
               onChange={(e) => onSearchChange(e.target.value)}
               placeholder="Type to search..."
-              className="w-full bg-[#202020] border border-white/5 rounded-md px-8 py-1.5 text-xs text-gray-200 placeholder-gray-500 focus:outline-none focus:border-white/20 transition-all"
+              className="w-full bg-[#202020] border border-white/5 rounded-md px-8 py-1.5 text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-white/20 transition-all"
             />
             <svg
-              className="w-3.5 h-3.5 text-gray-500 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none"
+              className="w-4 h-4 text-gray-500 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -69,7 +69,7 @@ export function TopBar({
           <button
             type="button"
             onClick={onShareBrain}
-            className="px-3 py-1.5 rounded-md bg-[#202020] hover:bg-[#262626] text-gray-400 hover:text-gray-200 text-xs font-medium transition-all cursor-pointer border border-white/5"
+            className="px-3.5 py-1.5 rounded-md bg-[#202020] hover:bg-[#262626] text-gray-300 hover:text-white text-sm font-medium transition-all cursor-pointer border border-white/5"
             title="Share Brain Link"
           >
             Share
@@ -80,7 +80,7 @@ export function TopBar({
           <button
             type="button"
             onClick={onAddMemory}
-            className="px-3.5 py-1.5 rounded-md bg-white/10 hover:bg-white/15 text-white text-xs font-medium transition-all cursor-pointer border border-white/10 flex items-center gap-1.5 active:scale-95"
+            className="px-4 py-1.5 rounded-md bg-white/10 hover:bg-white/15 text-white text-sm font-medium transition-all cursor-pointer border border-white/10 flex items-center gap-1.5 active:scale-95"
           >
             <span>+</span>
             <span>Add</span>
