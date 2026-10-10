@@ -39,3 +39,37 @@ export const createCollection=async(req:Request,res:Response)=>{
     });
 }
 };
+
+// fetching the collection
+export const getCollection=async(req:Request,res:Response)=>{
+    try {
+
+        const userId=req.userId;
+
+        if(!userId){
+            return res.status(401).json({
+                message:"Unauthorized user !"
+            })
+        };
+
+        const collection=await collectionModel.find({userId}).sort({createdAt:-1})
+
+        // createdAt: -1 puts the newest collection at the top of the sidebar, and 1 puts the oldest first
+
+        return res.status(200).json({
+            message:"Collection Fetched !",
+            data:{
+                collection
+            }
+        });
+    }catch (error) {
+    console.error("fetching collection failed",error);
+    return res.status(500).json({
+        message:"Internal server error"
+    });
+}
+};
+
+
+
+
