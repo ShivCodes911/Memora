@@ -1,5 +1,6 @@
-
+import mongoose from "mongoose";
 import contentModel from "../../models/content.model.js";
+import collectionModel from "../../models/collection.model.js";
 
 import type{Request,Response} from "express";
 import linkModel from "../../models/link.model.js";
@@ -49,42 +50,92 @@ export const addContent=async(req:Request,res:Response)=>{
     }
 };
 
-export const updateContent = async (req: Request, res: Response) => {
+// updating the content (title, description, or which collection it is in)
+export const updateContent=async(req:Request,res:Response)=>{
     try {
-        const userId = req.userId;
-        const contentId = req.params.contentId;
-        const { title, description } = req.body;
+        const userId=req.userId;
+        const contentId=req.params.contentId;
+        const {title,description,collectionId}=req.body;
 
-        if (!userId) {
+        if(!userId){
             return res.status(401).json({
-                message: "Unauthorized"
-            });
-        }
+                message:"Unauthorized"
+            })
+        };
 
-        const updateData: any = {};
-        if (title !== undefined) updateData.title = title;
-        if (description !== undefined) updateData.description = description;
+        if(!contentId || !mongoose.isValidObjectId(contentId)){
+            return res.status(400).json({
+                message:"Provide valid Content ID"
+            })
+        };
 
-        const updatedContent = await contentModel.findOneAndUpdate(
-            { _id: contentId, userId },
-            { $set: updateData },
-            { new: true }
+        // only the fields that are sent go in here
+        const update:{title?:string; description?:string; collectionId?:string|null}={};
+
+        if(title!==undefined){
+            if(typeof title!=="string" || !title.trim()){
+                return res.status(400).json({
+                    message:"Title must be a non-empty string"
+                })
+            };
+            update.title=title.trim();
+        };
+
+        if(description!==undefined){
+            if(typeof description!=="string"){
+                return res.status(400).json({
+                    message:"Description must be a string"
+                })
+            };
+            update.description=description;
+        };
+
+        // null -> move back to "All content", string -> move into that collection
+        if(collectionId!==undefined){
+            if(collectionId!==null){
+                if(typeof collectionId!=="string" || !mongoose.isValidObjectId(collectionId)){
+                    return res.status(400).json({
+                        message:"Provide valid Collection ID"
+                    })
+                };
+
+                const collectionExists=await collectionModel.exists({_id:collectionId,userId});
+
+                if(!collectionExists){
+                    return res.status(404).json({
+                        message:"collection not found"
+                    })
+                };
+            };
+            update.collectionId=collectionId;
+        };
+
+        if(Object.keys(update).length===0){
+            return res.status(400).json({
+                message:"Nothing to update"
+            })
+        };
+
+        const content=await contentModel.findOneAndUpdate(
+            {_id:contentId,userId},
+            {$set:update},
+            {returnDocument:"after",runValidators:true}
         );
 
-        if (!updatedContent) {
+        if(!content){
             return res.status(404).json({
-                message: "Content not found or unauthorized"
-            });
-        }
+                message:"content not found"
+            })
+        };
 
         return res.status(200).json({
-            message: "Content updated successfully",
-            content: updatedContent
-        });
-    } catch (error: any) {
-        console.error("Failed to update content:", error);
+            message:"Content updated Successfully",
+            content
+        })
+    } catch (error) {
+        console.error("updateContent failed",error);
         return res.status(500).json({
-            message: error.message || "Failed to update content"
+            message:"Internal server error"
         });
     }
 };
@@ -258,6 +309,9 @@ export const fetchSharedContent=async(req:Request,res:Response)=>{
     }
 
 };
+/*-----------------------------------------------------------------------------------*/
+
+// from here rohit PR logic begins
 
 export const fetchMetadata = async (req: Request, res: Response) => {
     try {
@@ -367,4 +421,4 @@ export const fetchMetadata = async (req: Request, res: Response) => {
         });
     }
 };
-
+
