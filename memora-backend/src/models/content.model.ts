@@ -23,6 +23,8 @@ const contentSchema=new mongoose.Schema <contentSchemaBody> ({
     collectionId:{type:mongoose.Schema.Types.ObjectId,ref:"Collection",default:null}
 });
 
+// same user can't save the same link twice in the same place (same collection, or twice in "All content")
+contentSchema.index({userId:1,link:1,collectionId:1},{unique:true});
 const contentModel=mongoose.model("Content",contentSchema);
 
 export default contentModel;

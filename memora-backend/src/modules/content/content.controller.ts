@@ -133,6 +133,12 @@ export const updateContent=async(req:Request,res:Response)=>{
             content
         })
     } catch (error) {
+        // same link already saved in the collection it is being moved into (unique index on userId + link + collectionId)
+        if(error instanceof mongoose.mongo.MongoServerError && error.code===11000){
+            return res.status(409).json({
+                message:"This link is already saved in that collection"
+            })
+        };
         console.error("updateContent failed",error);
         return res.status(500).json({
             message:"Internal server error"
