@@ -9,7 +9,7 @@ interface contentSchemaBody {
     userId:mongoose.Types.ObjectId;
 };
 
-const contentType = ["youtube", "twitter", "image", "video", "article", "audio", "pdf"];
+const contentType = ["youtube", "twitter", "image", "video", "article", "audio", "pdf", "shared_brain"];
 
 
 const contentSchema=new mongoose.Schema <contentSchemaBody> ({

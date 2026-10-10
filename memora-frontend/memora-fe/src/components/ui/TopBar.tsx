@@ -11,6 +11,7 @@ export interface TopBarProps {
   onSearchChange?: (query: string) => void;
   className?: string;
   isDark?: boolean;
+  title?: string;
 }
 
 export function TopBar({
@@ -24,6 +25,7 @@ export function TopBar({
   onSearchChange,
   className = "",
   isDark = true,
+  title,
 }: TopBarProps) {
   return (
     <header
@@ -38,7 +40,7 @@ export function TopBar({
           isOpen={isSidebarOpen}
         />
         <span className="text-sm font-medium text-gray-400 opacity-75 hover:opacity-100 transition-opacity">
-          Memora
+          {title || "Memora Dashboard"}
         </span>
       </div>
 
@@ -71,7 +73,7 @@ export function TopBar({
 
       {/* Right: Subtle Actions */}
       <div className="flex items-center gap-2">
-        {onShareBrain && (
+        {!title && onShareBrain && (
           <button
             type="button"
             onClick={onShareBrain}
@@ -86,7 +88,7 @@ export function TopBar({
           </button>
         )}
 
-        {onAddMemory && (
+        {!title && onAddMemory && (
           <button
             type="button"
             onClick={onAddMemory}

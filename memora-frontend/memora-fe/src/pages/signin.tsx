@@ -1,36 +1,41 @@
-import { useRef, useState } from "react";
+import { useState } from "react";
 import axios from "axios";
 import { BACKEND_URL } from "../config";
 import { useNavigate, Link } from "react-router-dom";
-import signinImg from "../assets/signin.png";
 import { Logo } from "../icons/logo";
-import { ShaderBackground } from "../components/ShaderBackground";
+
+const GoogleIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+    <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+    <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+    <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+  </svg>
+);
+
+
 
 export function Signin() {
-  const usernameRef = useRef<HTMLInputElement | null>(null);
-  const passwordRef = useRef<HTMLInputElement | null>(null);
-  const navigate    = useNavigate();
+  const navigate = useNavigate();
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPass, setShowPass] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const [showPass,  setShowPass]  = useState(false);
-  const [loading,   setLoading]   = useState(false);
-  const [error,     setError]     = useState<string | null>(null);
-  const [userFocus, setUserFocus] = useState(false);
-  const [passFocus, setPassFocus] = useState(false);
-
-  async function handleSignin(e: React.FormEvent) {
+  const handleSignin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
-
-    const username = usernameRef.current?.value?.trim();
-    const password = passwordRef.current?.value;
-
-    if (!username || !password) {
-      setError("Please enter your username and password.");
+    if (!username.trim()) {
+      setError("Please enter your username.");
       return;
     }
-
+    if (!password) {
+      setError("Please enter your password.");
+      return;
+    }
     try {
       setLoading(true);
+      setError(null);
       const response = await axios.post(`${BACKEND_URL}/api/v1/auth/signin`, {
         username,
         password,
@@ -48,184 +53,118 @@ export function Signin() {
     } finally {
       setLoading(false);
     }
-  }
+  };
+
+  const handleSocialClick = () => {
+    alert("Integration coming soon!");
+  };
 
   return (
-    <div className="relative h-screen max-h-screen w-full bg-[#0c0a09] p-3 sm:p-6 lg:p-8 flex items-center justify-center font-sans text-gray-800 overflow-hidden">
-
-      {/* 🌌 Dynamic Animated Fluid Shader Background */}
-      <ShaderBackground />
-
-      {/* ══════════════════════════════════════
-          ELEVATED GLASS CONTAINER WITH SMOOTH BLUR
-      ══════════════════════════════════════ */}
-      <div className="relative z-10 w-full max-w-[1240px] h-full max-h-[90vh] bg-black/40 backdrop-blur-3xl rounded-[28px] sm:rounded-[36px] overflow-hidden flex flex-col lg:flex-row shadow-[0_30px_90px_rgba(0,0,0,0.8)] border border-white/15">
-
-        {/* ══════════════════════════════════════
-            LEFT PANEL — Signin Image Asset Display
-        ══════════════════════════════════════ */}
-        <div className="hidden lg:flex lg:w-[46%] xl:w-[44%] items-center justify-center bg-black/30 relative overflow-hidden border-r border-white/10">
-          <div className="w-full h-full flex items-center justify-center">
-            <img
-              src={signinImg}
-              alt="Memora Sign In Visual"
-              className="max-w-full max-h-[106vh] object-cover select-none opacity-90"
-            />
-          </div>
+    <div className="min-h-screen flex flex-col items-center justify-center bg-white font-sans text-[#37352f]">
+      {/* Container */}
+      <div className="w-full max-w-[380px] px-4 flex flex-col items-center">
+        {/* Logo */}
+        <div className="mb-6 flex items-center justify-center w-10 h-9">
+          <Logo className="w-8 h-8 text-black" />
         </div>
 
-        {/* ══════════════════════════════════════
-            RIGHT PANEL — Glassmorphic Signin Form
-        ══════════════════════════════════════ */}
-        <div className="flex-1 bg-white/[0.07] backdrop-blur-3xl rounded-t-[28px] lg:rounded-t-none lg:rounded-r-[36px] flex flex-col justify-between p-8 sm:p-12 xl:p-16 h-full overflow-y-auto lg:overflow-hidden border-t lg:border-t-0 lg:border-l border-white/15 shadow-[inset_0_1px_1px_rgba(255,255,255,0.15)]">
+        {/* Title */}
+        <h1 className="text-[28px] font-bold text-center mb-1 leading-tight tracking-tight">
+          Your second brain awaits.
+        </h1>
+        <h2 className="text-[20px] font-medium text-center text-[#787774] mb-8 leading-tight tracking-tight">
+          Log in to your Memora account
+        </h2>
 
-          {/* Top Bar: Logo Left, Sign Up Right */}
-          <div className="flex items-center justify-between flex-shrink-0">
-            <Link to="/" className="flex items-center gap-2.5 group">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-tr from-orange-500 to-pink-500 text-white shadow-md group-hover:opacity-90 transition-opacity">
-                <Logo className="w-5 h-5 text-white" />
-              </div>
-              <span className="text-xl font-bold text-white tracking-tight">Memora</span>
-            </Link>
-
-            <Link
-              to="/signup"
-              className="flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-white/80 hover:text-white transition-colors py-1.5 px-3.5 rounded-full bg-white/5 hover:bg-white/15 border border-white/10 backdrop-blur-md"
-            >
-              <svg className="w-4 h-4 text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-              </svg>
-              Sign Up
-            </Link>
-          </div>
-
-          {/* Form Container Vertically Centered */}
-          <div className="my-auto py-6 w-full max-w-[400px] sm:max-w-[440px] mx-auto flex-shrink-0">
-
-            {/* Title */}
-            <h2 className="text-3xl sm:text-4xl font-semibold text-white tracking-tight mb-8">
-              Sign In
-            </h2>
-
-            {/* Error Banner */}
-            {error && (
-              <div className="mb-6 flex items-center gap-2.5 rounded-2xl bg-red-500/15 border border-red-500/30 px-4 py-3 text-xs text-red-200 backdrop-blur-md">
-                <svg className="w-4 h-4 shrink-0 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <circle cx="12" cy="12" r="10" strokeWidth="2"/>
-                  <line x1="12" y1="8" x2="12" y2="12" strokeWidth="2"/>
-                  <line x1="12" y1="16" x2="12.01" y2="16" strokeWidth="2"/>
-                </svg>
-                {error}
-              </div>
-            )}
-
-            {/* Signin Form */}
-            <form onSubmit={handleSignin} className="flex flex-col gap-4">
-
-              {/* Input 1: Email or Username */}
-              <div>
-                <div className={`rounded-full border bg-white/10 backdrop-blur-md px-6 py-3.5 transition-all duration-200 shadow-inner ${userFocus ? "border-orange-400 ring-2 ring-orange-500/25 bg-white/15" : "border-white/20 hover:border-white/35"}`}>
-                  <input
-                    ref={usernameRef}
-                    type="text"
-                    autoComplete="username"
-                    onFocus={() => setUserFocus(true)}
-                    onBlur={() =>  setUserFocus(false)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        if (!passwordRef.current?.value) {
-                          e.preventDefault();
-                          passwordRef.current?.focus();
-                        }
-                      }
-                    }}
-                    placeholder="Email or Username"
-                    className="w-full bg-transparent text-sm sm:text-base font-normal text-white outline-none placeholder:text-white/50"
-                  />
-                </div>
-              </div>
-
-              {/* Input 2: Password */}
-              <div>
-                <div className={`rounded-full border bg-white/10 backdrop-blur-md px-6 py-3.5 transition-all duration-200 shadow-inner flex items-center justify-between ${passFocus ? "border-orange-400 ring-2 ring-orange-500/25 bg-white/15" : "border-white/20 hover:border-white/35"}`}>
-                  <input
-                    ref={passwordRef}
-                    type={showPass ? "text" : "password"}
-                    autoComplete="current-password"
-                    onFocus={() => setPassFocus(true)}
-                    onBlur={() =>  setPassFocus(false)}
-                    placeholder="Password"
-                    className="w-full bg-transparent text-sm sm:text-base font-normal text-white outline-none placeholder:text-white/50"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPass(!showPass)}
-                    className="text-white/60 hover:text-white transition-colors pl-2 shrink-0 cursor-pointer"
-                    aria-label={showPass ? "Hide password" : "Show password"}
-                  >
-                    {showPass ? (
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 114.24 4.24M1 1l22 22" />
-                      </svg>
-                    ) : (
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                      </svg>
-                    )}
-                  </button>
-                </div>
-              </div>
-
-              {/* Forgot password link */}
-              <div className="pl-3 pt-0.5">
-                <a href="#" className="text-xs sm:text-sm font-medium text-orange-400 hover:text-orange-300 hover:underline transition-colors">
-                  Forgot password?
-                </a>
-              </div>
-
-              {/* Sign In Button */}
-              <div className="pt-3">
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full py-3.5 sm:py-4 rounded-full bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 text-white font-semibold text-base shadow-lg shadow-orange-500/25 transition-all duration-200 flex items-center justify-center gap-2 active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-                >
-                  {loading ? (
-                    "Signing in..."
-                  ) : (
-                    <>
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
-                      </svg>
-                      Sign In
-                    </>
-                  )}
-                </button>
-              </div>
-
-            </form>
-
-          </div>
-
-          {/* Bottom Footer Bar */}
-          <div className="flex items-center justify-between text-[11px] sm:text-xs text-white/50 flex-shrink-0 pt-4 border-t border-white/10">
-            <span>© {new Date().getFullYear()} Memora Inc.</span>
-            <div className="flex items-center gap-4">
-              <a href="#" className="hover:text-white/80 transition-colors">Contact Us</a>
-              <span className="flex items-center gap-1 cursor-pointer hover:text-white/80 transition-colors">
-                English
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                </svg>
-              </span>
+        {/* Form */}
+        <div className="w-full">
+          {error && (
+            <div className="mb-4 p-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded">
+              {error}
             </div>
-          </div>
+          )}
 
+          <form onSubmit={handleSignin} className="w-full flex flex-col">
+            <label className="text-[13px] font-medium text-[#787774] mb-1.5">Username</label>
+            <input
+              type="text"
+              autoFocus
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="Enter your username..."
+              className="w-full px-3 py-2 border border-[#e5e5e5] rounded-md focus:outline-none focus:ring-2 focus:ring-[#2383e2]/30 focus:border-[#2383e2] transition-colors mb-4 text-[15px] placeholder:text-[#91918e]"
+            />
+            
+            <label className="text-[13px] font-medium text-[#787774] mb-1.5">Password</label>
+            <div className="relative mb-5">
+              <input
+                type={showPass ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Enter your password..."
+                className="w-full px-3 py-2 border border-[#e5e5e5] rounded-md focus:outline-none focus:ring-2 focus:ring-[#2383e2]/30 focus:border-[#2383e2] transition-colors text-[15px] placeholder:text-[#91918e] pr-10"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPass(!showPass)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#37352f] transition-colors flex items-center justify-center"
+                tabIndex={-1}
+              >
+                {showPass ? (
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 114.24 4.24M1 1l22 22" />
+                  </svg>
+                ) : (
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
+                )}
+              </button>
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-[#2383e2] hover:bg-[#1a73cc] text-white font-medium py-2 rounded-md transition-colors text-[14px] disabled:opacity-50"
+            >
+              {loading ? "Signing in..." : "Sign in"}
+            </button>
+          </form>
         </div>
 
-      </div>
+        {/* Divider */}
+        <div className="w-full flex items-center my-6">
+          <div className="flex-grow border-t border-[#e5e5e5]"></div>
+          <span className="px-3 text-[#91918e] text-[13px]">or continue with</span>
+          <div className="flex-grow border-t border-[#e5e5e5]"></div>
+        </div>
 
+        {/* Social Authentication */}
+        <div className="w-full">
+          <button
+            type="button"
+            onClick={handleSocialClick}
+            className="flex items-center justify-center gap-3 w-full py-2.5 border border-[#e5e5e5] rounded-md hover:bg-gray-50 transition-colors text-[14px] font-medium text-[#37352f]"
+          >
+            <GoogleIcon />
+            Continue with Google
+          </button>
+        </div>
+
+        {/* Footer */}
+        <div className="mt-8 text-center w-full">
+          <p className="text-[14px] text-[#787774] mb-5">
+            New user? <Link to="/signup" className="text-[#2383e2] hover:underline">Sign up</Link>
+          </p>
+          <div className="border-t border-[#e5e5e5] pt-4 w-full"></div>
+          <p className="text-[12px] text-[#91918e] mt-4 max-w-[320px] mx-auto leading-relaxed">
+            By continuing, you acknowledge that you understand and agree to the{" "}
+            <a href="#" className="underline hover:text-gray-500">Terms & Conditions</a> and{" "}
+            <a href="#" className="underline hover:text-gray-500">Privacy Policy</a>
+          </p>
+        </div>
+      </div>
     </div>
   );
 }

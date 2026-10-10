@@ -195,8 +195,9 @@ export const Card = ({ _id, title, link, type, description, onDelete, onCopyToas
         }
     };
 
-    const isPdf = type === "pdf";
-    const isArticle = type !== "youtube" && type !== "twitter" && type !== "pdf";
+
+    const isSharedBrain = type === "shared_brain";
+    const isArticle = type !== "youtube" && type !== "twitter" && type !== "pdf" && type !== "shared_brain" && type !== "video";
     const hasImage = isArticle && metadata?.image && !imgError;
     const domainName = metadata?.domain || (() => { try { return new URL(link.startsWith("http") ? link : `https://${link}`).hostname; } catch { return ""; } })();
     const ytVideoId = getYouTubeVideoId(link);
@@ -218,11 +219,23 @@ export const Card = ({ _id, title, link, type, description, onDelete, onCopyToas
                         type === "youtube" ? (isDark ? "bg-red-500/15 text-red-400" : "bg-red-50 text-red-500") :
                         type === "twitter" ? (isDark ? "bg-sky-500/15 text-sky-400" : "bg-sky-50 text-sky-500") : 
                         type === "pdf" ? (isDark ? "bg-red-500/20 text-red-400" : "bg-red-50 text-red-600") :
+                        type === "video" ? (isDark ? "bg-emerald-500/15 text-emerald-400" : "bg-emerald-50 text-emerald-500") :
+                        isSharedBrain ? (isDark ? "bg-emerald-500/15 text-emerald-400" : "bg-emerald-50 text-emerald-600") :
                         (isDark ? "bg-purple-500/15 text-purple-400" : "bg-purple-50 text-purple-600")
                     }`}>
                         {type === "youtube" && <YoutubeIcon />}
                         {type === "twitter" && <TwitterIcon />}
                         {type === "pdf" && <PdfIcon className="w-5 h-5 text-red-500" />}
+                        {type === "video" && (
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                            </svg>
+                        )}
+                        {isSharedBrain && (
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                            </svg>
+                        )}
                         {isArticle && (
                             metadata?.favicon ? (
                                 <img src={metadata.favicon} alt="" className="w-5 h-5 rounded-sm" />
@@ -240,7 +253,7 @@ export const Card = ({ _id, title, link, type, description, onDelete, onCopyToas
                             {title}
                         </h3>
                         <span className={`text-[11px] font-semibold capitalize ${isDark ? "text-gray-400" : "text-gray-400"}`}>
-                            {domainName || type}
+                            {isSharedBrain ? "Memora Vault" : (domainName || type)}
                         </span>
                     </div>
                 </div>
@@ -269,8 +282,8 @@ export const Card = ({ _id, title, link, type, description, onDelete, onCopyToas
             </div>
 
             {/* Card Content Body */}
-            <div className={`pt-3 flex flex-col ${type === "youtube" ? "w-full" : "flex-1 min-h-0 overflow-hidden"}`}>
-                {type === "youtube" && (() => {
+            <div className={`pt-3 flex flex-col ${type === "youtube" || type === "video" ? "w-full" : "flex-1 min-h-0 overflow-hidden"}`}>
+                {(type === "youtube" || type === "video") && (() => {
                     // Split text into initial 2-line head and remaining tail for clean symmetrical preview
                     const lines = descText.split("\n");
                     const hasLineBreaks = lines.length > 2;
@@ -291,18 +304,27 @@ export const Card = ({ _id, title, link, type, description, onDelete, onCopyToas
 
                     return (
                     <div className="flex flex-col gap-2.5 w-full">
-                        {/* 1. YouTube Thumbnail — 16:9 Aspect Ratio (Stable & Fixed in normal flow) */}
+                        {/* 1. Video Thumbnail / Preview — 16:9 Aspect Ratio (Stable & Fixed in normal flow) */}
                         <div 
                             onClick={() => setPlayerOpen(true)}
                             className="relative w-full aspect-video rounded-xl overflow-hidden bg-black/60 border border-white/10 group/thumb cursor-pointer shrink-0 shadow-md"
                         >
-                            {ytThumbnailUrl && !thumbError ? (
+                            {type === "youtube" && ytThumbnailUrl && !thumbError ? (
                                 <img
                                     src={ytThumbnailUrl}
                                     alt={title}
                                     className="w-full h-full object-cover transition-transform duration-300 group-hover/thumb:scale-105"
                                     onError={() => setThumbError(true)}
                                 />
+                            ) : type === "video" ? (
+                                <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-emerald-950/40 via-[#18181b] to-black gap-2 p-4">
+                                    <div className="p-3 rounded-2xl bg-emerald-600/20 text-emerald-500 border border-emerald-500/20">
+                                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                        </svg>
+                                    </div>
+                                    <span className="text-xs text-gray-400 font-mono">Video File</span>
+                                </div>
                             ) : (
                                 <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-red-950/40 via-[#18181b] to-black gap-2 p-4">
                                     <div className="p-3 rounded-2xl bg-red-600/20 text-red-500 border border-red-500/20">
@@ -314,7 +336,7 @@ export const Card = ({ _id, title, link, type, description, onDelete, onCopyToas
                             
                             {/* Play Button Overlay */}
                             <div className="absolute inset-0 bg-black/20 group-hover/thumb:bg-black/50 transition-colors flex items-center justify-center">
-                                <div className="w-10 h-10 rounded-2xl bg-red-600/90 text-white flex items-center justify-center shadow-lg transition-transform group-hover/thumb:scale-110">
+                                <div className={`w-10 h-10 rounded-2xl ${type === "video" ? "bg-emerald-600/90" : "bg-red-600/90"} text-white flex items-center justify-center shadow-lg transition-transform group-hover/thumb:scale-110`}>
                                     <svg className="w-5 h-5 fill-current ml-0.5" viewBox="0 0 24 24">
                                         <path d="M8 5v14l11-7z"/>
                                     </svg>
@@ -596,6 +618,59 @@ export const Card = ({ _id, title, link, type, description, onDelete, onCopyToas
                         </div>
                     </a>
                 )}
+
+                {isSharedBrain && (
+                    <div className={`h-full flex flex-col rounded-xl border overflow-hidden p-4 justify-between transition-colors ${
+                        isDark 
+                            ? "border-emerald-500/20 bg-gradient-to-b from-emerald-950/20 via-[#1a1818] to-[#141212]" 
+                            : "border-emerald-200 bg-gradient-to-b from-emerald-50 to-white shadow-sm"
+                    }`}>
+                        <div className="flex flex-col gap-3">
+                            <div className="flex items-center gap-3">
+                                <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 border ${
+                                    isDark ? "bg-emerald-500/15 border-emerald-500/20 text-emerald-500" : "bg-emerald-100 border-emerald-200 text-emerald-600"
+                                }`}>
+                                    <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                                    </svg>
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                    <span className={`text-[10px] font-bold uppercase tracking-wider block ${isDark ? "text-emerald-400" : "text-emerald-600"}`}>
+                                        Shared Brain Vault
+                                    </span>
+                                    <a 
+                                        href={link} 
+                                        target="_blank" 
+                                        rel="noopener noreferrer"
+                                        className={`text-sm font-bold hover:underline line-clamp-1 mt-0.5 cursor-pointer transition-colors ${
+                                            isDark ? "text-emerald-100 hover:text-emerald-400" : "text-gray-900 hover:text-emerald-700"
+                                        }`}
+                                    >
+                                        {title}
+                                    </a>
+                                </div>
+                            </div>
+                            
+                            <div className={`p-3 rounded-xl border text-xs leading-relaxed flex items-start gap-2 ${
+                                isDark ? "bg-white/5 border-white/5 text-gray-300" : "bg-white border-emerald-100 text-gray-600 shadow-sm"
+                            }`}>
+                                <span className="text-emerald-500 text-sm">🧠</span>
+                                <span className="line-clamp-2">{description || "Explore this shared knowledge collection."}</span>
+                            </div>
+                        </div>
+
+                        <div className={`flex items-center gap-2 pt-3 mt-2 border-t ${isDark ? "border-white/10" : "border-emerald-100"}`}>
+                            <a
+                                href={link}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex-1 py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-md cursor-pointer"
+                            >
+                                <span>Open Vault ↗️</span>
+                            </a>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
 
@@ -647,7 +722,7 @@ export const Card = ({ _id, title, link, type, description, onDelete, onCopyToas
             </div>
         )}
 
-        {/* YouTube Video Player Modal Overlay */}
+        {/* Video Player Modal Overlay (YouTube & Native Video) */}
         {playerOpen && (
             <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xl flex flex-col items-center justify-center p-4 sm:p-8 animate-in fade-in duration-200">
                 <div className="w-full max-w-4xl flex justify-end mb-4">
@@ -661,13 +736,25 @@ export const Card = ({ _id, title, link, type, description, onDelete, onCopyToas
                     </button>
                 </div>
                 <div className="relative w-full max-w-4xl aspect-video bg-black rounded-2xl overflow-hidden shadow-2xl border border-white/10 flex flex-col shrink-0">
-                    <iframe
-                        src={`${getYouTubeEmbedUrl(link)}?autoplay=1`}
-                        title={title}
-                        className="w-full h-full border-0"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        allowFullScreen
-                    />
+                    {type === "youtube" ? (
+                        <iframe
+                            src={`${getYouTubeEmbedUrl(link)}?autoplay=1`}
+                            title={title}
+                            className="w-full h-full border-0"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            allowFullScreen
+                        />
+                    ) : (
+                        <video 
+                            src={link} 
+                            controls 
+                            autoPlay 
+                            className="w-full h-full outline-none"
+                            controlsList="nodownload"
+                        >
+                            Your browser does not support the video tag.
+                        </video>
+                    )}
                 </div>
             </div>
         )}

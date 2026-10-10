@@ -19,6 +19,21 @@ export function SharedPage() {
     const [searchQuery, setSearchQuery] = useState<string>("");
     const [toastMessage, setToastMessage] = useState<string | null>(null);
 
+    // Responsive Column Distribution (Serial Order Across Independent Columns)
+    const [numCols, setNumCols] = useState(1);
+    useEffect(() => {
+        const updateCols = () => {
+            const w = window.innerWidth;
+            if (w >= 1536) setNumCols(4);       // 2xl
+            else if (w >= 1280) setNumCols(3);  // xl
+            else if (w >= 640) setNumCols(2);   // sm
+            else setNumCols(1);                 // xs
+        };
+        updateCols();
+        window.addEventListener("resize", updateCols);
+        return () => window.removeEventListener("resize", updateCols);
+    }, []);
+
     const showToast = (msg: string) => {
         setToastMessage(msg);
         setTimeout(() => setToastMessage(null), 3500);
@@ -89,28 +104,45 @@ export function SharedPage() {
         showToast("Public Brain link copied to clipboard");
     };
 
-    // Responsive Column Distribution (Serial Order Across Independent Columns)
-    const [numCols, setNumCols] = useState(1);
-    useEffect(() => {
-        const updateCols = () => {
-            const w = window.innerWidth;
-            if (w >= 1536) setNumCols(4);       // 2xl
-            else if (w >= 1280) setNumCols(3);  // xl
-            else if (w >= 640) setNumCols(2);   // sm
-            else setNumCols(1);                 // xs
-        };
-        updateCols();
-        window.addEventListener("resize", updateCols);
-        return () => window.removeEventListener("resize", updateCols);
-    }, []);
+    const saveSharedBrain = async () => {
+        const token = localStorage.getItem("token");
+        if (!token) {
+            window.location.href = "/signin";
+            return;
+        }
+        
+        try {
+            await axios.post(
+                `${BACKEND_URL}/api/v1/content`,
+                { 
+                    link: `${window.location.origin}/share/${shareLink}`,
+                    type: "shared_brain",
+                    title: `${data?.username}'s Brain`,
+                    description: `Public Knowledge Collection shared by ${data?.username}`
+                },
+                {
+                    headers: {
+                        Authorization: `Bearer ${token}`
+                    }
+                }
+            );
+            showToast("Brain saved to your Shared tab!");
+        } catch (err: any) {
+            showToast(err?.response?.data?.message || "Brain might already be saved!");
+        }
+    };
 
     const columns: (typeof filteredContents)[] = Array.from({ length: numCols }, () => []);
     filteredContents.forEach((item, idx) => {
         columns[idx % numCols].push(item);
     });
 
+    const isLoggedIn = !!localStorage.getItem("token");
+
     return (
-        <div className="min-h-screen bg-[#09090b] text-zinc-100 font-sans flex flex-col">
+        <div className="min-h-screen bg-[#09090b] text-zinc-100 font-sans flex flex-col relative">
+            <Toast message={toastMessage} onClose={() => setToastMessage(null)} />
+            
             {/* Notion-Style Top Published Banner */}
             <div className="bg-[#0f172a] border-b border-sky-500/20 px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 text-xs text-sky-200">
                 <div className="flex items-center gap-2">
@@ -124,12 +156,24 @@ export function SharedPage() {
                     >
                         Copy Link
                     </button>
-                    <Link
-                        to="/signup"
-                        className="px-3 py-1 rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-medium transition-colors text-xs"
-                    >
-                        Create Your Brain →
-                    </Link>
+                    {isLoggedIn ? (
+                        <button
+                            onClick={saveSharedBrain}
+                            className="px-3 py-1 rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-medium transition-colors text-xs cursor-pointer flex items-center gap-1.5"
+                        >
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                            </svg>
+                            Save to My Shared
+                        </button>
+                    ) : (
+                        <Link
+                            to="/signup"
+                            className="px-3 py-1 rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-medium transition-colors text-xs"
+                        >
+                            Create Your Brain →
+                        </Link>
+                    )}
                 </div>
             </div>
 

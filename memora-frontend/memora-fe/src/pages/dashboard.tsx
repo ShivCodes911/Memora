@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from "react";
+import type { Content } from "../types/content";
 import { TopBar } from "../components/ui/TopBar";
 import { Sidebar, type NavItemConfig } from "../components/ui/Sidebar";
 import { SidebarPreview } from "../components/ui/SidebarPreview";
@@ -18,6 +19,11 @@ export function Dashboard() {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
+  const [currentWorkspace, setCurrentWorkspace] = useState<string>("personal");
+  const [sharedWorkspaceData, setSharedWorkspaceData] = useState<{ username: string; content: Content[] } | null>(null);
+  const [sharedWorkspaceLoading, setSharedWorkspaceLoading] = useState(false);
+  const [sharedWorkspaceError, setSharedWorkspaceError] = useState<string | null>(null);
+
   const [isDark, setIsDark] = useState(() => {
     const saved = localStorage.getItem("theme");
     return saved !== "light";
@@ -36,6 +42,25 @@ export function Dashboard() {
 
   const { contents, refresh, loading } = useContent();
   const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (currentWorkspace !== "personal") {
+      setSharedWorkspaceLoading(true);
+      setSharedWorkspaceError(null);
+      axios.get(`${BACKEND_URL}/api/v1/content/${currentWorkspace}`)
+        .then((result) => {
+          setSharedWorkspaceData(result.data);
+        })
+        .catch((err) => {
+          setSharedWorkspaceError(err?.response?.data?.message || "Failed to load shared brain");
+        })
+        .finally(() => {
+          setSharedWorkspaceLoading(false);
+        });
+    } else {
+      setSharedWorkspaceData(null);
+    }
+  }, [currentWorkspace]);
 
   // Keyboard shortcut: Ctrl+\ or Cmd+\ toggles sidebar (Notion shortcut)
   useEffect(() => {
@@ -154,15 +179,6 @@ export function Dashboard() {
       ),
     },
     {
-      id: "shared",
-      label: "Shared",
-      icon: (
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-        </svg>
-      ),
-    },
-    {
       id: "settings",
       label: "Settings",
       icon: (
@@ -174,8 +190,15 @@ export function Dashboard() {
     },
   ];
 
+  const sharedBrains = contents.filter((item) => item.type === "shared_brain");
+
+  const sourceContents = currentWorkspace === "personal" 
+    ? contents.filter((item) => item.type !== "shared_brain") 
+    : (sharedWorkspaceData?.content || []);
+
   // Filtering content
-  const filteredContents = contents.filter((item) => {
+  const filteredContents = sourceContents.filter((item) => {
+    // Top bar search filter
     if (searchQuery.trim() !== "") {
       const q = searchQuery.toLowerCase();
       return item.title?.toLowerCase().includes(q) || item.link?.toLowerCase().includes(q);
@@ -215,6 +238,9 @@ export function Dashboard() {
         items={NAV_ITEMS}
         isDark={isDark}
         onToggleTheme={toggleTheme}
+        currentWorkspace={currentWorkspace}
+        onWorkspaceSelect={setCurrentWorkspace}
+        sharedBrains={sharedBrains}
       />
 
       {/* ── Hover Navigation Preview (Floats without pushing content) ── */}
@@ -257,15 +283,27 @@ export function Dashboard() {
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
           isDark={isDark}
+          title={currentWorkspace !== "personal" && sharedWorkspaceData ? `${sharedWorkspaceData.username}'s Brain` : undefined}
         />
 
         {/* Viewport Canvas */}
         <main className="flex-1 w-full h-full overflow-y-auto p-6 sm:p-10 relative">
-          {loading && contents.length === 0 ? (
+          {sharedWorkspaceError ? (
+            <div className="w-full h-full flex flex-col items-center justify-center text-center">
+              <h2 className={`text-lg font-bold mb-2 ${isDark ? "text-white" : "text-gray-900"}`}>Unable to access brain</h2>
+              <p className="text-sm text-gray-500 mb-6 max-w-sm">{sharedWorkspaceError}</p>
+              <button 
+                onClick={() => setCurrentWorkspace("personal")}
+                className="px-4 py-2 rounded-md bg-purple-600 text-white text-xs font-semibold"
+              >
+                Return to Personal Brain
+              </button>
+            </div>
+          ) : (loading && currentWorkspace === "personal" && contents.length === 0) || sharedWorkspaceLoading ? (
             <div className="w-full h-full flex items-center justify-center">
               <div className="flex items-center gap-2 text-xs text-gray-500 font-mono animate-pulse">
                 <span className="w-2 h-2 rounded-full bg-gray-500" />
-                Loading workspace...
+                {sharedWorkspaceLoading ? "Syncing external brain..." : "Loading workspace..."}
               </div>
             </div>
           ) : filteredContents.length === 0 ? (
