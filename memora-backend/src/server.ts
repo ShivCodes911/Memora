@@ -10,7 +10,7 @@ const PORT =Number(process.env.PORT) ||3000;
 connectDB()
 .then(()=>{
     app.listen(PORT,()=>{
-    console.log("Server is listening on PORT 3000")
+    console.log(`Server is listening on PORT ${PORT}`)
 })
 })
 .catch((error)=>{

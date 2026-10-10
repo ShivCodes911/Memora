@@ -8,7 +8,7 @@ import userModel from "../../models/user.model.js";
 
 export const addContent=async(req:Request,res:Response)=>{
     try {
-        const {link,type,title,tags}=req.body;
+        const {link,type,title,description,tags}=req.body;
         const userId=req.userId
 
         if(!userId){
@@ -17,11 +17,18 @@ export const addContent=async(req:Request,res:Response)=>{
             })
         }
 
+        if(!link || !type || !title){
+            return res.status(400).json({
+                message:"Link, type, and title are required."
+            })
+        }
+
        const content=await contentModel.create({
             link,
             type,
             title,
-            tags:[],
+            description: description || "",
+            tags:tags || [],
             userId:userId
         });
 
@@ -29,11 +36,57 @@ export const addContent=async(req:Request,res:Response)=>{
             message:"Content created SuccessFully",
             content
         });
-    } catch (error) {
-        console.error("failed",error);
-        
+    } catch (error: any) {
+        console.error("Failed to add content:", error);
+        if (error.code === 11000) {
+            return res.status(400).json({
+                message: "You have already saved this link to your vault."
+            });
+        }
+        return res.status(500).json({
+            message: error.message || "Failed to create content"
+        });
     }
+};
 
+export const updateContent = async (req: Request, res: Response) => {
+    try {
+        const userId = req.userId;
+        const contentId = req.params.contentId;
+        const { title, description } = req.body;
+
+        if (!userId) {
+            return res.status(401).json({
+                message: "Unauthorized"
+            });
+        }
+
+        const updateData: any = {};
+        if (title !== undefined) updateData.title = title;
+        if (description !== undefined) updateData.description = description;
+
+        const updatedContent = await contentModel.findOneAndUpdate(
+            { _id: contentId, userId },
+            { $set: updateData },
+            { new: true }
+        );
+
+        if (!updatedContent) {
+            return res.status(404).json({
+                message: "Content not found or unauthorized"
+            });
+        }
+
+        return res.status(200).json({
+            message: "Content updated successfully",
+            content: updatedContent
+        });
+    } catch (error: any) {
+        console.error("Failed to update content:", error);
+        return res.status(500).json({
+            message: error.message || "Failed to update content"
+        });
+    }
 };
 
 // diaplays the added content on the screen 
@@ -48,19 +101,18 @@ export const fetchContent=async(req:Request,res:Response)=>{
         }
         const content=await contentModel.find({
             userId:userId
-    }).populate("userId","username");
+        }).populate("userId","username");
 
-    return res.status(200).json({
-        message:"Here is your content",
-        content:content
-    })
-
-    
-} catch (error) {
-        console.error("failed",error);
-        
+        return res.status(200).json({
+            message:"Here is your content",
+            content:content
+        })
+    } catch (error: any) {
+        console.error("Failed to fetch content:", error);
+        return res.status(500).json({
+            message: error.message || "Failed to fetch content"
+        });
     }
-
 };
 
 export const deleteContent=async(req:Request,res:Response)=>{
@@ -206,3 +258,113 @@ export const fetchSharedContent=async(req:Request,res:Response)=>{
     }
 
 };
+
+export const fetchMetadata = async (req: Request, res: Response) => {
+    try {
+        const urlStr = req.query.url as string;
+        if (!urlStr) {
+            return res.status(400).json({ message: "URL is required" });
+        }
+
+        const targetUrl = urlStr.startsWith("http") ? urlStr : `https://${urlStr}`;
+        const parsedUrl = new URL(targetUrl);
+        const favicon = `https://www.google.com/s2/favicons?domain=${parsedUrl.hostname}&sz=64`;
+
+        // Check if URL is a direct PDF link
+        const pathParts = parsedUrl.pathname.split("/").filter(Boolean);
+        const lastSegment = pathParts[pathParts.length - 1] || "";
+        const isPdfUrl = targetUrl.toLowerCase().includes(".pdf") || lastSegment.toLowerCase().endsWith(".pdf");
+
+        if (isPdfUrl) {
+            const cleanName = lastSegment ? decodeURIComponent(lastSegment) : `PDF Document (${parsedUrl.hostname})`;
+            return res.status(200).json({
+                title: cleanName,
+                description: "PDF Document",
+                image: "",
+                favicon,
+                domain: parsedUrl.hostname
+            });
+        }
+
+        const response = await fetch(targetUrl, {
+            headers: {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,application/pdf;q=0.8,*/*;q=0.8",
+                "Accept-Language": "en-US,en;q=0.5"
+            },
+            redirect: "follow",
+            signal: AbortSignal.timeout(8000)
+        });
+
+        const contentTypeHeader = response.headers.get("content-type") || "";
+        if (contentTypeHeader.includes("application/pdf")) {
+            const cleanName = lastSegment ? decodeURIComponent(lastSegment) : `PDF Document (${parsedUrl.hostname})`;
+            return res.status(200).json({
+                title: cleanName,
+                description: "PDF Document",
+                image: "",
+                favicon,
+                domain: parsedUrl.hostname
+            });
+        }
+
+        const html = await response.text();
+
+        // Helper: extract meta tag content (handles both property and name, and both attribute orderings)
+        const getMetaContent = (property: string): string | null => {
+            const p1 = new RegExp(`<meta[^>]*?(?:property|name)\\s*=\\s*["']${property}["'][^>]*?content\\s*=\\s*["']([^"']+)["']`, 'i');
+            const p2 = new RegExp(`<meta[^>]*?content\\s*=\\s*["']([^"']+)["'][^>]*?(?:property|name)\\s*=\\s*["']${property}["']`, 'i');
+            const match = html.match(p1) || html.match(p2);
+            return (match && match[1]) ? match[1].trim() : null;
+        };
+
+        // Title extraction: try OG, then twitter, then <title> tag
+        const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+        const rawTitle = getMetaContent("og:title") 
+            || getMetaContent("twitter:title") 
+            || (titleMatch && titleMatch[1] ? titleMatch[1].replace(/\s+/g, ' ').trim() : null);
+        
+        const title = rawTitle 
+            ? rawTitle.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&#x27;/g, "'") 
+            : (lastSegment || parsedUrl.hostname);
+        
+        const description = getMetaContent("og:description") || getMetaContent("twitter:description") || getMetaContent("description") || "";
+
+        // Image: resolve relative URLs to absolute
+        let image = getMetaContent("og:image") || getMetaContent("twitter:image") || getMetaContent("twitter:image:src") || "";
+        if (image && !image.startsWith("http")) {
+            if (image.startsWith("//")) {
+                image = `https:${image}`;
+            } else {
+                image = new URL(image, targetUrl).href;
+            }
+        }
+
+        return res.status(200).json({
+            title,
+            description: description.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"'),
+            image,
+            favicon,
+            domain: parsedUrl.hostname
+        });
+    } catch (error) {
+        console.error("Fetch metadata error:", error);
+        const fallbackDomain = (() => {
+            try { return new URL(req.query.url as string).hostname; } catch { return ""; }
+        })();
+        const fallbackPath = (() => {
+            try { 
+                const p = new URL(req.query.url as string).pathname.split("/").filter(Boolean);
+                return p[p.length - 1] || "";
+            } catch { return ""; }
+        })();
+        return res.status(200).json({
+            title: fallbackPath ? decodeURIComponent(fallbackPath) : (fallbackDomain || "Saved PDF / Link"),
+            description: "PDF Document",
+            image: "",
+            favicon: fallbackDomain ? `https://www.google.com/s2/favicons?domain=${fallbackDomain}&sz=64` : "",
+            domain: fallbackDomain
+        });
+    }
+};
+
