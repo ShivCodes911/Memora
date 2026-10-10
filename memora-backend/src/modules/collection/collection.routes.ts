@@ -1,7 +1,7 @@
 import express from "express";
 
 
-import { createCollection, deleteCollection, getCollection, shareCollection, updateCollection } from "./collection.controller.js";
+import { createCollection, deleteCollection, getCollection, getSharedCollection, shareCollection, updateCollection } from "./collection.controller.js";
 import { authMiddleware } from "../../middlewares/auth.middleware.js";
 
 
@@ -15,6 +15,7 @@ router.get("/",authMiddleware,getCollection);
 router.patch("/:id",authMiddleware,updateCollection);
 router.delete("/:id",authMiddleware,deleteCollection);
 router.post("/:id/share",authMiddleware,shareCollection);
+router.get("/share/:shareHash",getSharedCollection);
 
 
 export default router;
