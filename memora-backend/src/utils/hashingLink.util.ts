@@ -1,12 +1,10 @@
+import {randomBytes} from  "node:crypto"
+
 export function hash(len:number){
-    let options="snfjanrfqwfnhvsjvnahdajahfefja";
-    let length=options.length;
-
-    let ans="";
-
-    for(let i =0;i<options.length;i++){
-        ans += options[Math.floor((Math.random()*length))] 
-    }
-    return ans;
+   return randomBytes(len).toString("hex");
 
 }
+
+//explanation
+//  randomBytes(len) creates len random bytes.
+// - .toString("hex") turns each byte into 2 URL-safe characters (0-9, a-f).
