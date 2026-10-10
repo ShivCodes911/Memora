@@ -1,6 +1,7 @@
 import type {Request,Response} from "express";
 import mongoose from "mongoose";
 import collectionModel from "../../models/collection.model.js";
+import contentModel from "../../models/content.model.js";
 
 
 
@@ -136,6 +137,56 @@ export const updateCollection =async(req:Request,res:Response)=>{
 
         
     }
+};
+
+
+export const deleteCollection=async(req:Request,res:Response)=>{
+    try {
+        const userId=req.userId;
+
+        if(!userId){
+            return res.status(401).json({
+                message:"Unauthorized"
+            })
+        }
+
+        const id = req.params.id;
+
+        if(!id  || !mongoose.isValidObjectId(id)){
+            return res.status(400).json({
+                message:"Provide valid Collection ID"
+            })
+        };
+
+        const collection = await collectionModel.findOne({_id:id,userId});
+
+        if(!collection){
+            return res.status(404).json({
+                message:"collection not found"
+            })
+        };
+
+        await contentModel.updateMany({
+            collectionId:id,
+            userId
+        },{
+            $set:{collectionId:null}
+        });
+
+        await collectionModel.deleteOne({_id:id,userId});
+
+        return res.status(200).json({
+            message:"Collection deleted Successfully"
+        })
+
+    } catch (error) {
+        console.error("deleteCollection failed",error);
+        return res.status(500).json({
+        message:"Internal server error"
+    });
+        
+    }
+
 }
 
 
