@@ -9,7 +9,7 @@ import userModel from "../../models/user.model.js";
 
 export const addContent=async(req:Request,res:Response)=>{
     try {
-        const {link,type,title,description,tags}=req.body;
+        const {link,type,title,description,tags,collectionId}=req.body;
         const userId=req.userId
 
         if(!userId){
@@ -23,6 +23,22 @@ export const addContent=async(req:Request,res:Response)=>{
                 message:"Link, type, and title are required."
             })
         }
+        if(collectionId!==undefined && collectionId!==null){
+
+    if(typeof collectionId!=="string" || !mongoose.isValidObjectId(collectionId)){
+        return res.status(400).json({
+            message:"Enter valid CollectionID"
+        })
+    };
+
+    const collectionExists=await collectionModel.exists({_id:collectionId,userId});
+
+    if(!collectionExists){
+        return res.status(404).json({
+            message:"Collection not Found"
+        })
+    };
+}
 
        const content=await contentModel.create({
             link,
@@ -30,7 +46,8 @@ export const addContent=async(req:Request,res:Response)=>{
             title,
             description: description || "",
             tags:tags || [],
-            userId:userId
+            userId:userId,
+            collectionId:collectionId ?? null
         });
 
         return res.status(201).json({
