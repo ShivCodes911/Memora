@@ -203,6 +203,180 @@ export const Card = ({ _id, title, link, type, description, onDelete, onCopyToas
     const ytVideoId = getYouTubeVideoId(link);
     const ytThumbnailUrl = ytVideoId ? `https://img.youtube.com/vi/${ytVideoId}/hqdefault.jpg` : null;
 
+    const renderNoteEditor = () => {
+                    // Split text into initial 2-line head and remaining tail for clean symmetrical preview
+                    const lines = descText.split("\n");
+                    const hasLineBreaks = lines.length > 2;
+                    let headText = descText;
+                    let tailText = "";
+
+                    if (hasLineBreaks) {
+                        headText = lines.slice(0, 2).join("\n");
+                        tailText = lines.slice(2).join("\n");
+                    } else if (descText.length > 70) {
+                        const breakIdx = descText.lastIndexOf(" ", 70);
+                        const splitAt = breakIdx > 35 ? breakIdx : 70;
+                        headText = descText.slice(0, splitAt);
+                        tailText = descText.slice(splitAt);
+                    }
+
+                    const isLongText = Boolean(tailText);
+
+        return (
+                        <div className="w-full">
+                            {/* 1. Edit Mode Accordion Slot */}
+                            <div 
+                                className="grid transition-all duration-250 ease-out overflow-hidden"
+                                style={{
+                                    gridTemplateRows: isEditingDesc ? "1fr" : "0fr",
+                                    opacity: isEditingDesc ? 1 : 0,
+                                    transitionProperty: "grid-template-rows, opacity",
+                                    transitionDuration: "250ms",
+                                    transitionTimingFunction: "cubic-bezier(0.4, 0, 0.2, 1)",
+                                    pointerEvents: isEditingDesc ? "auto" : "none"
+                                }}
+                            >
+                                <div className="overflow-hidden min-h-0">
+                                    <div className="flex flex-col rounded-xl bg-[#141414] border border-white/10 focus-within:border-purple-500/40 focus-within:ring-1 focus-within:ring-purple-500/20 p-2.5 shadow-inner">
+                                        <textarea
+                                            ref={textareaRef}
+                                            value={descText}
+                                            onChange={(e) => {
+                                                setDescText(e.target.value);
+                                                adjustTextareaHeight();
+                                            }}
+                                            placeholder="Write a personal note..."
+                                            rows={2}
+                                            className="w-full bg-transparent text-xs text-gray-200 placeholder:text-gray-500/80 outline-none resize-none leading-relaxed font-normal overflow-hidden"
+                                        />
+                                        <div className="flex items-center justify-end gap-2 pt-2 mt-1 border-t border-white/5">
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setDescText(description || "");
+                                                    setIsEditingDesc(false);
+                                                    setIsNoteExpanded(false);
+                                                }}
+                                                className="px-2.5 py-1 rounded-lg text-xs font-medium text-gray-400 hover:text-gray-200 hover:bg-white/5 transition-colors cursor-pointer"
+                                            >
+                                                Cancel
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={handleSaveDescription}
+                                                disabled={isSavingDesc}
+                                                className="px-3 py-1 rounded-lg text-xs font-semibold bg-purple-600 hover:bg-purple-500 active:scale-[0.98] text-white shadow-sm transition-all disabled:opacity-50 cursor-pointer flex items-center gap-1.5"
+                                            >
+                                                {isSavingDesc ? (
+                                                    <>
+                                                        <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                                        <span>Saving...</span>
+                                                    </>
+                                                ) : (
+                                                    <span>Save Note</span>
+                                                )}
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* 2. View Mode Accordion Slot */}
+                            {descText ? (
+                                <div 
+                                    className="grid transition-all duration-250 ease-out overflow-hidden"
+                                    style={{
+                                        gridTemplateRows: isEditingDesc ? "0fr" : "1fr",
+                                        opacity: isEditingDesc ? 0 : 1,
+                                        transitionProperty: "grid-template-rows, opacity",
+                                        transitionDuration: "250ms",
+                                        transitionTimingFunction: "cubic-bezier(0.4, 0, 0.2, 1)",
+                                        pointerEvents: isEditingDesc ? "none" : "auto"
+                                    }}
+                                >
+                                    <div className="overflow-hidden min-h-0">
+                                        <div
+                                            onClick={() => {
+                                                if (isLongText) {
+                                                    setIsNoteExpanded((prev) => !prev);
+                                                }
+                                            }}
+                                            className={`group/desc text-xs text-gray-300 leading-relaxed p-2.5 rounded-xl bg-[#141414] hover:bg-[#181818] border border-white/5 hover:border-purple-500/30 transition-colors ${
+                                                isLongText ? "cursor-pointer" : ""
+                                            }`}
+                                            title={isLongText ? (isNoteExpanded ? "Click to collapse note" : "Click to expand note") : undefined}
+                                        >
+                                            {/* Head Text (Lines 1-2, always solid at top) */}
+                                            <p className="text-gray-300/90 text-xs leading-relaxed whitespace-pre-wrap">
+                                                {headText}
+                                            </p>
+
+                                            {/* Tail Text (Smooth 250ms Grid Accordion unfolding strictly downward) */}
+                                            {isLongText && (
+                                                <div 
+                                                    className="grid transition-all duration-250 ease-out overflow-hidden"
+                                                    style={{
+                                                        gridTemplateRows: isNoteExpanded ? "1fr" : "0fr",
+                                                        transitionProperty: "grid-template-rows",
+                                                        transitionDuration: "250ms",
+                                                        transitionTimingFunction: "cubic-bezier(0.4, 0, 0.2, 1)"
+                                                    }}
+                                                >
+                                                    <div className="overflow-hidden min-h-0">
+                                                        <p className="text-gray-300/90 text-xs leading-relaxed whitespace-pre-wrap pt-0.5">
+                                                            {tailText}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            <div className="flex items-center justify-between mt-1.5 pt-1 border-t border-white/5 text-[10px] text-gray-500">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="font-medium text-purple-400/80">Saved Note</span>
+                                                    {isLongText && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setIsNoteExpanded((prev) => !prev);
+                                                            }}
+                                                            className="font-semibold text-purple-400 hover:text-purple-300 transition-colors cursor-pointer"
+                                                        >
+                                                            {isNoteExpanded ? "Show less" : "Read more"}
+                                                        </button>
+                                                    )}
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setIsEditingDesc(true);
+                                                    }}
+                                                    className="text-purple-400 hover:text-purple-300 transition-colors cursor-pointer font-semibold flex items-center gap-1 bg-purple-500/10 hover:bg-purple-500/20 px-2 py-0.5 rounded-md border border-purple-500/20"
+                                                    title="Edit description"
+                                                >
+                                                    <span>✎ Edit</span>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            ) : (
+                                /* Empty State: + Add note Action */
+                                <div>
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsEditingDesc(true)}
+                                        className="inline-flex items-center gap-1.5 text-xs text-purple-400/90 hover:text-purple-300 font-medium py-1 px-2.5 rounded-lg bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/20 transition-colors cursor-pointer"
+                                    >
+                                        <span>+ Add note</span>
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+        );
+    };
+
     return (
         <>
         <div className={`rounded-2xl border p-5 shadow-sm hover:shadow-xl transition-[shadow,transform] duration-300 ease-out flex flex-col w-full hover:-translate-y-1 group relative overflow-hidden h-auto ${
@@ -376,7 +550,7 @@ export const Card = ({ _id, title, link, type, description, onDelete, onCopyToas
                                                 setDescText(e.target.value);
                                                 adjustTextareaHeight();
                                             }}
-                                            placeholder="Write a note about this video..."
+                                            placeholder="Write a personal note..."
                                             rows={2}
                                             className="w-full bg-transparent text-xs text-gray-200 placeholder:text-gray-500/80 outline-none resize-none leading-relaxed font-normal overflow-hidden"
                                         />
@@ -522,47 +696,83 @@ export const Card = ({ _id, title, link, type, description, onDelete, onCopyToas
                 )}
 
                 {type === "pdf" && (
-                    <div className="h-full flex flex-col rounded-xl border border-red-500/20 bg-gradient-to-b from-[#221515] via-[#1a1818] to-[#141212] overflow-hidden p-4 justify-between">
-                        <div className="flex flex-col gap-3">
-                            <div className="flex items-center gap-3">
-                                <div className="w-12 h-12 rounded-xl bg-red-500/15 border border-red-500/20 flex items-center justify-center shrink-0">
-                                    <PdfIcon className="w-7 h-7 text-red-500" />
-                                </div>
-                                <div className="min-w-0 flex-1">
-                                    <span className="text-[10px] font-bold uppercase tracking-wider text-red-400 block">PDF Document</span>
-                                    <h4 className="text-sm font-bold text-white line-clamp-1 mt-0.5">{title}</h4>
-                                    <span className="text-[11px] text-gray-400 block truncate">{domainName}</span>
-                                </div>
-                            </div>
-                            
-                            <div className="p-3 rounded-xl bg-white/5 border border-white/5 text-xs text-gray-300 leading-relaxed flex items-start gap-2">
-                                <span className="text-red-400 text-sm">📄</span>
-                                <span className="line-clamp-2">Click below to open full distraction-free document reader or original link.</span>
-                            </div>
-                        </div>
-
-                        <div className="flex items-center gap-2 pt-3 border-t border-white/10">
-                            <button
-                                type="button"
+                    <div className="flex flex-col gap-3 h-full w-full">
+                        <div className={`h-full flex flex-col rounded-xl border overflow-hidden transition-colors ${
+                            isDark 
+                                ? "bg-red-950/10 border-red-500/20 text-gray-200 hover:border-red-500/40" 
+                                : "bg-gradient-to-b from-red-50/50 to-orange-50/30 border-red-100/50 text-gray-600 hover:border-red-300"
+                        }`}>
+                            {/* PDF Smart Thumbnail / Icon Fallback */}
+                            <div 
                                 onClick={() => setReaderOpen(true)}
-                                className="flex-1 py-2.5 px-3 rounded-xl bg-red-600 hover:bg-red-700 active:scale-95 text-white text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-md cursor-pointer"
+                                className={`w-full h-44 shrink-0 overflow-hidden relative flex flex-col items-center justify-center gap-2 cursor-pointer group/pdf-thumb ${
+                                    isDark 
+                                        ? 'bg-gradient-to-br from-red-950/40 via-[#18181b] to-black' 
+                                        : 'bg-gradient-to-br from-red-50 via-white to-red-50/30'
+                                }`}
+                                title="Click to read PDF document"
                             >
-                                <span>Read Document 📖</span>
-                            </button>
-                            <a
-                                href={link}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="py-2.5 px-3 rounded-xl bg-white/10 hover:bg-white/20 active:scale-95 text-gray-200 text-xs font-semibold transition-all flex items-center gap-1 cursor-pointer"
-                                title="Open Original Link"
-                            >
-                                <span>Link ↗️</span>
-                            </a>
+                                {(() => {
+                                    const gdMatch = link.match(/(?:\/file\/d\/|[?&]id=)([a-zA-Z0-9_-]+)/);
+                                    const pdfImageUrl = gdMatch ? `https://drive.google.com/thumbnail?id=${gdMatch[1]}&sz=w800` : metadata?.image;
+                                    
+                                    if (pdfImageUrl && !imgError) {
+                                        return (
+                                            <img
+                                                src={pdfImageUrl}
+                                                alt={title}
+                                                referrerPolicy="no-referrer"
+                                                className="w-full h-full object-cover object-top origin-top transition-transform duration-300 group-hover/pdf-thumb:scale-105"
+                                                onError={() => setImgError(true)}
+                                            />
+                                        );
+                                    }
+                                    return (
+                                        <>
+                                            <div className={`p-4 rounded-2xl shadow-sm ${
+                                                isDark ? 'bg-red-500/10 text-red-500 border border-red-500/20 shadow-red-900/20' 
+                                                       : 'bg-red-100 text-red-600 border border-red-200 shadow-red-200/50'
+                                            }`}>
+                                                <PdfIcon className="w-10 h-10" />
+                                            </div>
+                                            <span className={`text-[10px] font-bold uppercase tracking-widest ${isDark ? "text-red-400/80" : "text-red-600/80"}`}>
+                                                PDF Document
+                                            </span>
+                                        </>
+                                    );
+                                })()}
+                            </div>
+
+                            {/* Action Buttons */}
+                            <div className={`p-3 border-t ${isDark ? "border-white/5" : "border-red-100/50"}`}>
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => setReaderOpen(true)}
+                                        className="flex-1 py-2 px-3 rounded-xl bg-red-600 hover:bg-red-700 active:scale-95 text-white text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-md cursor-pointer"
+                                    >
+                                        <span>Read Document 📖</span>
+                                    </button>
+                                    <a
+                                        href={link}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className={`py-2 px-3 rounded-xl active:scale-95 text-xs font-semibold transition-all flex items-center gap-1 cursor-pointer border ${
+                                            isDark ? "bg-white/10 hover:bg-white/20 text-gray-200 border-transparent" : "bg-white hover:bg-gray-50 text-gray-700 border-gray-200 shadow-sm"
+                                        }`}
+                                        title="Open Original Link"
+                                    >
+                                        <span>Open ↗️</span>
+                                    </a>
+                                </div>
+                            </div>
                         </div>
+                        {renderNoteEditor()}
                     </div>
                 )}
 
                 {isArticle && (
+                    <div className="flex flex-col gap-3 h-full w-full">
                     <a 
                         href={link} 
                         target="_blank" 
@@ -575,7 +785,7 @@ export const Card = ({ _id, title, link, type, description, onDelete, onCopyToas
                     >
                         {/* OG Image */}
                         {hasImage && (
-                            <div className="w-full h-40 shrink-0 overflow-hidden bg-gray-100">
+                            <div className="w-full h-28 shrink-0 overflow-hidden bg-gray-100">
                                 <img
                                     src={metadata!.image}
                                     alt={title}
@@ -603,7 +813,7 @@ export const Card = ({ _id, title, link, type, description, onDelete, onCopyToas
                                 </p>
 
                                 {metadata?.description && (
-                                    <p className={`text-xs line-clamp-3 leading-relaxed ${isDark ? "text-gray-400" : "text-gray-500"}`}>
+                                    <p className={`text-xs line-clamp-2 leading-relaxed ${isDark ? "text-gray-400" : "text-gray-500"}`}>
                                         {metadata.description}
                                     </p>
                                 )}
@@ -619,6 +829,8 @@ export const Card = ({ _id, title, link, type, description, onDelete, onCopyToas
                             </div>
                         </div>
                     </a>
+                    {renderNoteEditor()}
+                    </div>
                 )}
 
                 {isSharedBrain && (
