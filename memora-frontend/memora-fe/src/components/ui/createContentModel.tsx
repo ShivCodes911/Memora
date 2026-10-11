@@ -28,9 +28,13 @@ const TYPES: { label: string; value: ContentType; renderIcon: () => React.ReactN
     { label: "YouTube", value: "youtube", renderIcon: () => <YoutubeIcon /> },
     { label: "Twitter / X", value: "twitter", renderIcon: () => <TwitterIcon /> },
     { label: "Video File", value: "video", renderIcon: () => (
-        <svg className="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-        </svg>
+        <img
+            width="24"
+            height="24"
+            src="https://img.icons8.com/softteal-line/24/video.png"
+            alt="video"
+            className="w-4 h-4 object-contain brightness-110"
+        />
     ) },
     { label: "Article", value: "article", renderIcon: () => (
         <svg className="w-4 h-4 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">

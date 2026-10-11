@@ -158,7 +158,7 @@ export const fetchContent=async(req:Request,res:Response)=>{
         }
         const content=await contentModel.find({
             userId:userId
-        }).populate("userId","username");
+        }).sort({ _id: 1 }).populate("userId","username");
 
         return res.status(200).json({
             message:"Here is your content",
@@ -285,7 +285,7 @@ export const fetchSharedContent=async(req:Request,res:Response)=>{
 
             const content= await contentModel.find({
                 userId:link.userId
-            });
+            }).sort({ _id: 1 });
 
             
 

@@ -280,7 +280,7 @@ export const getSharedCollection=async(req:Request,res:Response)=>{
             })
         };
 
-        const content=await contentModel.find({collectionId:collection._id,userId:collection.userId});
+        const content=await contentModel.find({collectionId:collection._id,userId:collection.userId}).sort({ _id: 1 });
         const user=await userModel.findById(collection.userId).select("username");
 
         if(!user){

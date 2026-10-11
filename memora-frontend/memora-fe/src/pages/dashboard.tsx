@@ -206,23 +206,43 @@ export function Dashboard() {
     return true;
   });
 
-  // Responsive Column Distribution (Serial Order Across Independent Columns)
-  const [numCols, setNumCols] = useState(1);
+  // Responsive Column Distribution (Adds +1 column when side panel is closed to preserve card size)
+  const [numCols, setNumCols] = useState(4);
   useEffect(() => {
     const updateCols = () => {
       const w = window.innerWidth;
-      if (w >= 1536) setNumCols(4);       // 2xl
-      else if (w >= 1280) setNumCols(3);  // xl
-      else if (w >= 640) setNumCols(2);   // sm
-      else setNumCols(1);                 // xs
+      const isDesktop = w >= 1024;
+      
+      if (!isDesktop) {
+        if (w >= 640) setNumCols(2);
+        else setNumCols(1);
+        return;
+      }
+
+      // On desktop, adjust column count based on whether the sidebar is open
+      if (sidebarOpen) {
+        if (w >= 2100) setNumCols(5);
+        else if (w >= 1400) setNumCols(4);
+        else if (w >= 1080) setNumCols(3);
+        else setNumCols(2);
+      } else {
+        // When side panel is closed (+260px available width), add 1 more card space per row!
+        if (w >= 2100) setNumCols(6);
+        else if (w >= 1400) setNumCols(5);
+        else if (w >= 1080) setNumCols(4);
+        else setNumCols(3);
+      }
     };
     updateCols();
     window.addEventListener("resize", updateCols);
     return () => window.removeEventListener("resize", updateCols);
-  }, []);
+  }, [sidebarOpen]);
 
-  const columns: (typeof filteredContents)[] = Array.from({ length: numCols }, () => []);
-  filteredContents.forEach((item, idx) => {
+  // Sort chronologically ascending (_id ascending) so any newly added item goes to the last
+  const sortedContents = [...filteredContents].sort((a, b) => (a._id > b._id ? 1 : a._id < b._id ? -1 : 0));
+
+  const columns: (typeof sortedContents)[] = Array.from({ length: numCols }, () => []);
+  sortedContents.forEach((item, idx) => {
     columns[idx % numCols].push(item);
   });
 
@@ -314,7 +334,12 @@ export function Dashboard() {
               isDark={isDark}
             />
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6 items-start">
+            <div 
+              className="grid gap-6 items-start transition-all duration-300"
+              style={{
+                gridTemplateColumns: `repeat(${numCols}, minmax(0, 1fr))`
+              }}
+            >
               {columns.map((colItems, colIdx) => (
                 <div key={colIdx} className="flex flex-col gap-6">
                   {colItems.map(({ _id, type, link, title, description }) => (

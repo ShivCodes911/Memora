@@ -14,7 +14,9 @@ export function useContent() {
             }
         })
         .then((response) => {
-            setContents(response.data.content || []);
+            const list: Content[] = response.data.content || [];
+            list.sort((a, b) => (a._id > b._id ? 1 : a._id < b._id ? -1 : 0));
+            setContents(list);
         })
         .catch((err) => {
             console.error("Failed to fetch contents:", err);
