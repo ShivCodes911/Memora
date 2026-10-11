@@ -1,6 +1,6 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import type { Content } from "../types/content";
-import { TopBar } from "../components/ui/TopBar";
+import { TopBar, type FilterCounts } from "../components/ui/TopBar";
 import { Sidebar, type NavItemConfig } from "../components/ui/Sidebar";
 import { SidebarPreview } from "../components/ui/SidebarPreview";
 import { Card } from "../components/ui/Card";
@@ -13,7 +13,7 @@ import { BACKEND_URL } from "../config";
 
 export function Dashboard() {
   const [modalOpen, setModalOpen] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<string>("home");
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -62,7 +62,7 @@ export function Dashboard() {
     }
   }, [currentWorkspace]);
 
-  // Keyboard shortcut: Ctrl+\ or Cmd+\ toggles sidebar (Notion shortcut)
+  // Keyboard shortcut: Ctrl+\ or Cmd+\ toggles sidebar (shortcut)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === "\\") {
@@ -190,39 +190,100 @@ export function Dashboard() {
     },
   ];
 
+  const [typeFilter, setTypeFilter] = useState<string>("all");
+
   const sharedBrains = contents.filter((item) => item.type === "shared_brain");
 
   const sourceContents = currentWorkspace === "personal" 
     ? contents.filter((item) => item.type !== "shared_brain") 
     : (sharedWorkspaceData?.content || []);
 
-  // Filtering content
+  // Compute item counts for the filter dropdown options
+  const filterCounts = useMemo<FilterCounts>(() => {
+    const counts: FilterCounts = {
+      all: sourceContents.length,
+      video: 0,
+      twitter: 0,
+      pdf: 0,
+      article: 0,
+      has_note: 0,
+    };
+    sourceContents.forEach((item) => {
+      if (item.type === "youtube" || item.type === "video") counts.video++;
+      else if (item.type === "twitter") counts.twitter++;
+      else if (item.type === "pdf") counts.pdf++;
+      else counts.article++;
+
+      if (item.description && item.description.trim() !== "") counts.has_note++;
+    });
+    return counts;
+  }, [sourceContents]);
+
+  // Filtering content by search query and selected filter option
   const filteredContents = sourceContents.filter((item) => {
-    // Top bar search filter
+    // 1. Search Query Filter
     if (searchQuery.trim() !== "") {
       const q = searchQuery.toLowerCase();
-      return item.title?.toLowerCase().includes(q) || item.link?.toLowerCase().includes(q);
+      const matchesSearch = item.title?.toLowerCase().includes(q) || item.link?.toLowerCase().includes(q);
+      if (!matchesSearch) return false;
+    }
+
+    // 2. Type / Note Filter Option
+    if (typeFilter === "video") {
+      return item.type === "youtube" || item.type === "video";
+    }
+    if (typeFilter === "twitter") {
+      return item.type === "twitter";
+    }
+    if (typeFilter === "pdf") {
+      return item.type === "pdf";
+    }
+    if (typeFilter === "article") {
+      return item.type === "article" || (item.type !== "youtube" && item.type !== "video" && item.type !== "twitter" && item.type !== "pdf");
+    }
+    if (typeFilter === "has_note") {
+      return Boolean(item.description && item.description.trim() !== "");
     }
     return true;
   });
 
-  // Responsive Column Distribution (Serial Order Across Independent Columns)
-  const [numCols, setNumCols] = useState(1);
+  // Responsive Column Distribution (Adds +1 column when side panel is closed to preserve card size)
+  const [numCols, setNumCols] = useState(4);
   useEffect(() => {
     const updateCols = () => {
       const w = window.innerWidth;
-      if (w >= 1536) setNumCols(4);       // 2xl
-      else if (w >= 1280) setNumCols(3);  // xl
-      else if (w >= 640) setNumCols(2);   // sm
-      else setNumCols(1);                 // xs
+      const isDesktop = w >= 1024;
+      
+      if (!isDesktop) {
+        if (w >= 640) setNumCols(2);
+        else setNumCols(1);
+        return;
+      }
+
+      // On desktop, adjust column count based on whether the sidebar is open
+      if (sidebarOpen) {
+        if (w >= 2100) setNumCols(5);
+        else if (w >= 1400) setNumCols(4);
+        else if (w >= 1080) setNumCols(3);
+        else setNumCols(2);
+      } else {
+        // When side panel is closed (+260px available width), add 1 more card space per row!
+        if (w >= 2100) setNumCols(6);
+        else if (w >= 1400) setNumCols(5);
+        else if (w >= 1080) setNumCols(4);
+        else setNumCols(3);
+      }
     };
     updateCols();
     window.addEventListener("resize", updateCols);
     return () => window.removeEventListener("resize", updateCols);
-  }, []);
+  }, [sidebarOpen]);
 
-  const columns: (typeof filteredContents)[] = Array.from({ length: numCols }, () => []);
-  filteredContents.forEach((item, idx) => {
+  // Sort chronologically ascending (_id ascending) so any newly added item goes to the last
+  const sortedContents = [...filteredContents].sort((a, b) => (a._id > b._id ? 1 : a._id < b._id ? -1 : 0));
+
+  const columns: (typeof sortedContents)[] = Array.from({ length: numCols }, () => []);
+  sortedContents.forEach((item, idx) => {
     columns[idx % numCols].push(item);
   });
 
@@ -282,6 +343,9 @@ export function Dashboard() {
           onShareBrain={handleShare}
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
+          activeFilter={typeFilter}
+          onFilterChange={setTypeFilter}
+          filterCounts={filterCounts}
           isDark={isDark}
           title={currentWorkspace !== "personal" && sharedWorkspaceData ? `${sharedWorkspaceData.username}'s Brain` : undefined}
         />
@@ -308,13 +372,18 @@ export function Dashboard() {
             </div>
           ) : filteredContents.length === 0 ? (
             <EmptyState
-              isSearch={searchQuery.trim() !== ""}
+              isSearch={searchQuery.trim() !== "" || typeFilter !== "all"}
               searchQuery={searchQuery}
               onAddClick={() => setModalOpen(true)}
               isDark={isDark}
             />
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6 items-start">
+            <div 
+              className="grid gap-6 items-start transition-all duration-300"
+              style={{
+                gridTemplateColumns: `repeat(${numCols}, minmax(0, 1fr))`
+              }}
+            >
               {columns.map((colItems, colIdx) => (
                 <div key={colIdx} className="flex flex-col gap-6">
                   {colItems.map(({ _id, type, link, title, description }) => (
