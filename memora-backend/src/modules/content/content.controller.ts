@@ -163,28 +163,42 @@ export const updateContent=async(req:Request,res:Response)=>{
     }
 };
 
-// diaplays the added content on the screen 
-
+// displays the content on the screen (all of it, or only one collection's)
 export const fetchContent=async(req:Request,res:Response)=>{
     try {
         const userId=req.userId;
+        const {collectionId}=req.query;
+
         if(!userId){
             return res.status(401).json({
                 message:"Unauthorized"
             })
-        }
-        const content=await contentModel.find({
-            userId:userId
-        }).sort({ _id: 1 }).populate("userId","username");
+        };
+
+        // always only this user's content
+        const filter:{userId:string; collectionId?:string}={userId};
+
+        // ?collectionId=<id> -> only that collection's content
+        if(collectionId!==undefined){
+            if(typeof collectionId!=="string" || !mongoose.isValidObjectId(collectionId)){
+                return res.status(400).json({
+                    message:"Provide valid Collection ID"
+                })
+            };
+            filter.collectionId=collectionId;
+        };
+
+        // oldest first (sort kept from rohit's PR #3)
+        const content=await contentModel.find(filter).sort({ _id: 1 }).populate("userId","username");
 
         return res.status(200).json({
             message:"Here is your content",
-            content:content
+            content
         })
-    } catch (error: any) {
-        console.error("Failed to fetch content:", error);
+    } catch (error) {
+        console.error("fetchContent failed",error);
         return res.status(500).json({
-            message: error.message || "Failed to fetch content"
+            message:"Internal server error"
         });
     }
 };
