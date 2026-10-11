@@ -304,7 +304,7 @@ export const getSharedCollection=async(req:Request,res:Response)=>{
 
 }
  catch (error) {
-          console.error("shareCollection failed",error);
+          console.error("getshareCollection failed",error);
         return res.status(500).json({
         message:"Internal server error"
     });
