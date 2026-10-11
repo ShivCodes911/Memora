@@ -459,3 +459,87 @@ export const fetchMetadata = async (req: Request, res: Response) => {
     }
 };
 
+export const proxyWebsite = async (req: Request, res: Response) => {
+    try {
+        const urlStr = req.query.url as string;
+        if (!urlStr) {
+            return res.status(400).send("URL parameter is required");
+        }
+
+        const targetUrl = urlStr.startsWith("http://") || urlStr.startsWith("https://") ? urlStr : `https://${urlStr}`;
+        const parsedUrl = new URL(targetUrl);
+
+        const response = await fetch(targetUrl, {
+            headers: {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+                "Accept-Language": "en-US,en;q=0.9"
+            },
+            redirect: "follow",
+            signal: AbortSignal.timeout(12000)
+        });
+
+        const contentType = response.headers.get("content-type") || "text/html";
+        let body = await response.text();
+
+        // Inject <base> tag so relative styles, images, and fonts load correctly from original host
+        const baseTag = `<base href="${parsedUrl.origin}${parsedUrl.pathname}" target="_blank">`;
+        if (body.includes("<head>")) {
+            body = body.replace("<head>", `<head>${baseTag}`);
+        } else if (body.includes("<HEAD>")) {
+            body = body.replace("<HEAD>", `<HEAD>${baseTag}`);
+        } else {
+            body = baseTag + body;
+        }
+
+        // Set response headers without frame restrictions
+        res.setHeader("Content-Type", contentType);
+        res.removeHeader("X-Frame-Options");
+        res.removeHeader("Content-Security-Policy");
+        res.setHeader("Content-Security-Policy", "frame-ancestors *");
+        return res.send(body);
+    } catch (error) {
+        console.error("Proxy website error:", error);
+        return res.status(502).send(`
+            <!DOCTYPE html>
+            <html>
+                <head>
+                    <meta charset="utf-8">
+                    <title>Live Preview</title>
+                    <style>
+                        body {
+                            background: #121212;
+                            color: #e0e0e0;
+                            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            height: 100vh;
+                            margin: 0;
+                            padding: 20px;
+                            box-sizing: border-box;
+                            text-align: center;
+                        }
+                        .box {
+                            max-width: 480px;
+                            background: #1a1a1a;
+                            border: 1px solid rgba(255,255,255,0.1);
+                            padding: 32px;
+                            border-radius: 16px;
+                            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+                        }
+                        h2 { margin-top: 0; color: #fff; font-size: 18px; }
+                        p { font-size: 13px; color: #aaa; line-height: 1.6; }
+                    </style>
+                </head>
+                <body>
+                    <div class="box">
+                        <h2>Live Stream Restricted</h2>
+                        <p>This site blocks live embedded streaming. Please switch to <strong>Reader View</strong> or click <strong>Open Original Tab</strong> above to view it in full.</p>
+                    </div>
+                </body>
+            </html>
+        `);
+    }
+};
+

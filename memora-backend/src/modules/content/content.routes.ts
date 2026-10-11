@@ -1,10 +1,11 @@
 import express from "express";
 import { authMiddleware } from "../../middlewares/auth.middleware.js";
 
-import { addContent, deleteContent, fetchContent, fetchMetadata, fetchSharedContent, shareContent, updateContent } from "./content.controller.js";
+import { addContent, deleteContent, fetchContent, fetchMetadata, fetchSharedContent, shareContent, updateContent, proxyWebsite } from "./content.controller.js";
 
 const router=express.Router();
 
+router.get("/proxy", proxyWebsite);
 router.post("/",authMiddleware,addContent);
 router.get("/",authMiddleware,fetchContent);
 router.put("/:contentId",authMiddleware,updateContent);

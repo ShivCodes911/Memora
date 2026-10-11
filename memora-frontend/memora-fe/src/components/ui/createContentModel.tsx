@@ -1,12 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CrossIcon } from "../../icons/crossIcon";
-import { Button } from "./Button";
 import axios from "axios";
 import { BACKEND_URL } from "../../config";
 import type { ContentType } from "../../types/content";
 
 import { YoutubeIcon } from "../../icons/youtube";
-import { TwitterIcon } from "../../icons/twitter";
 import { PdfIcon } from "../../icons/pdfIcon";
 
 interface ContentModalProps {
@@ -325,7 +323,7 @@ export function CreateContentModal({ open, onClose, type: initialType = "youtube
                     {type !== "twitter" && (
                         <div>
                             <label className="text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider block mb-1.5">
-                                Personal Notes / Description <span className="font-normal lowercase">(optional)</span>
+                                Description <span className="font-normal lowercase">(optional)</span>
                             </label>
                             <textarea
                                 ref={descRef}
