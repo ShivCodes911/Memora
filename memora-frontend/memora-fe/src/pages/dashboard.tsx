@@ -1,6 +1,6 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import type { Content } from "../types/content";
-import { TopBar } from "../components/ui/TopBar";
+import { TopBar, type FilterCounts } from "../components/ui/TopBar";
 import { Sidebar, type NavItemConfig } from "../components/ui/Sidebar";
 import { SidebarPreview } from "../components/ui/SidebarPreview";
 import { Card } from "../components/ui/Card";
@@ -190,18 +190,59 @@ export function Dashboard() {
     },
   ];
 
+  const [typeFilter, setTypeFilter] = useState<string>("all");
+
   const sharedBrains = contents.filter((item) => item.type === "shared_brain");
 
   const sourceContents = currentWorkspace === "personal" 
     ? contents.filter((item) => item.type !== "shared_brain") 
     : (sharedWorkspaceData?.content || []);
 
-  // Filtering content
+  // Compute item counts for the filter dropdown options
+  const filterCounts = useMemo<FilterCounts>(() => {
+    const counts: FilterCounts = {
+      all: sourceContents.length,
+      video: 0,
+      twitter: 0,
+      pdf: 0,
+      article: 0,
+      has_note: 0,
+    };
+    sourceContents.forEach((item) => {
+      if (item.type === "youtube" || item.type === "video") counts.video++;
+      else if (item.type === "twitter") counts.twitter++;
+      else if (item.type === "pdf") counts.pdf++;
+      else counts.article++;
+
+      if (item.description && item.description.trim() !== "") counts.has_note++;
+    });
+    return counts;
+  }, [sourceContents]);
+
+  // Filtering content by search query and selected filter option
   const filteredContents = sourceContents.filter((item) => {
-    // Top bar search filter
+    // 1. Search Query Filter
     if (searchQuery.trim() !== "") {
       const q = searchQuery.toLowerCase();
-      return item.title?.toLowerCase().includes(q) || item.link?.toLowerCase().includes(q);
+      const matchesSearch = item.title?.toLowerCase().includes(q) || item.link?.toLowerCase().includes(q);
+      if (!matchesSearch) return false;
+    }
+
+    // 2. Type / Note Filter Option
+    if (typeFilter === "video") {
+      return item.type === "youtube" || item.type === "video";
+    }
+    if (typeFilter === "twitter") {
+      return item.type === "twitter";
+    }
+    if (typeFilter === "pdf") {
+      return item.type === "pdf";
+    }
+    if (typeFilter === "article") {
+      return item.type === "article" || (item.type !== "youtube" && item.type !== "video" && item.type !== "twitter" && item.type !== "pdf");
+    }
+    if (typeFilter === "has_note") {
+      return Boolean(item.description && item.description.trim() !== "");
     }
     return true;
   });
@@ -302,6 +343,9 @@ export function Dashboard() {
           onShareBrain={handleShare}
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
+          activeFilter={typeFilter}
+          onFilterChange={setTypeFilter}
+          filterCounts={filterCounts}
           isDark={isDark}
           title={currentWorkspace !== "personal" && sharedWorkspaceData ? `${sharedWorkspaceData.username}'s Brain` : undefined}
         />
@@ -328,7 +372,7 @@ export function Dashboard() {
             </div>
           ) : filteredContents.length === 0 ? (
             <EmptyState
-              isSearch={searchQuery.trim() !== ""}
+              isSearch={searchQuery.trim() !== "" || typeFilter !== "all"}
               searchQuery={searchQuery}
               onAddClick={() => setModalOpen(true)}
               isDark={isDark}

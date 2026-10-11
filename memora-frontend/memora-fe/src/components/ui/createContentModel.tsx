@@ -26,7 +26,15 @@ interface LinkMetadata {
 
 const TYPES: { label: string; value: ContentType; renderIcon: () => React.ReactNode }[] = [
     { label: "YouTube", value: "youtube", renderIcon: () => <YoutubeIcon /> },
-    { label: "Twitter / X", value: "twitter", renderIcon: () => <TwitterIcon /> },
+    { label: "Twitter / X", value: "twitter", renderIcon: () => (
+        <img
+            width="50"
+            height="50"
+            src="https://img.icons8.com/ios/50/twitterx--v2.png"
+            alt="twitterx--v2"
+            className="w-4 h-4 object-contain invert opacity-90"
+        />
+    ) },
     { label: "Video File", value: "video", renderIcon: () => (
         <img
             width="24"
@@ -330,12 +338,13 @@ export function CreateContentModal({ open, onClose, type: initialType = "youtube
 
                     {/* Submit Button */}
                     <div className="pt-2 flex justify-end gap-3">
-                        <Button
-                            variant="secondary"
-                            text="Cancel"
-                            size="md"
+                        <button
+                            type="button"
                             onClick={onClose}
-                        />
+                            className="px-5 py-2.5 rounded-xl text-sm font-semibold transition-colors duration-200 cursor-pointer border border-gray-200 dark:border-white/10 bg-gray-100 hover:bg-gray-200 text-gray-700 hover:text-gray-900 dark:bg-white/5 dark:hover:bg-white/10 dark:text-gray-300 dark:hover:text-white active:scale-95"
+                        >
+                            Cancel
+                        </button>
                         <button
                             type="submit"
                             disabled={loading}

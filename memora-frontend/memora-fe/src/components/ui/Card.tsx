@@ -233,8 +233,8 @@ export const Card = ({ _id, title, link, type, description, onDelete, onCopyToas
                         <img 
                             src="https://img.icons8.com/ios/50/add--v1.png" 
                             alt="add--v1" 
-                            className={`w-3.5 h-3.5 object-contain transition-transform group-hover/addnote:scale-110 ${
-                                isDark ? "invert opacity-90" : "opacity-80"
+                            className={`w-4.5 h-4.5 object-contain transition-transform group-hover/addnote:scale-110 ${
+                                isDark ? "invert opacity-95" : "opacity-85"
                             }`} 
                         />
                         <span>Add note</span>
@@ -264,9 +264,15 @@ export const Card = ({ _id, title, link, type, description, onDelete, onCopyToas
                             <span>📝</span>
                             <span>Note</span>
                         </span>
-                        <span className="text-[10px] font-semibold text-purple-400 group-hover/desc:text-purple-300 flex items-center gap-0.5 transition-colors">
+                        <span className="text-[10px] font-semibold text-purple-400 group-hover/desc:text-purple-300 flex items-center gap-1 transition-colors">
                             <span>Open</span>
-                            <span className="text-xs leading-none">↗</span>
+                            <img
+                                width="24"
+                                height="24"
+                                src="https://img.icons8.com/material-outlined/24/external-link.png"
+                                alt="external-link"
+                                className={`w-3.5 h-3.5 object-contain ${isDark ? "invert opacity-85" : "opacity-75"}`}
+                            />
                         </span>
                     </div>
 
@@ -451,7 +457,7 @@ export const Card = ({ _id, title, link, type, description, onDelete, onCopyToas
                 <div className="flex items-center gap-2.5 min-w-0">
                     <div className={`p-2 rounded-xl shrink-0 ${
                         (type === "youtube" || type === "video") ? (isDark ? "bg-emerald-500/15 text-emerald-400" : "bg-emerald-50 text-emerald-500") :
-                        type === "twitter" ? (isDark ? "bg-sky-500/15 text-sky-400" : "bg-sky-50 text-sky-500") : 
+                        type === "twitter" ? (isDark ? "bg-white/[0.08] text-white" : "bg-neutral-100 text-neutral-900") : 
                         type === "pdf" ? (isDark ? "bg-red-500/20 text-red-400" : "bg-red-50 text-red-600") :
                         isSharedBrain ? (isDark ? "bg-emerald-500/15 text-emerald-400" : "bg-emerald-50 text-emerald-600") :
                         (isDark ? "bg-purple-500/15 text-purple-400" : "bg-purple-50 text-purple-600")
@@ -464,6 +470,17 @@ export const Card = ({ _id, title, link, type, description, onDelete, onCopyToas
                                 alt="video"
                                 className={`w-5 h-5 object-contain transition-all ${
                                     isDark ? "brightness-125 drop-shadow-[0_0_6px_rgba(72,184,166,0.35)]" : "brightness-95 contrast-125"
+                                }`}
+                            />
+                        )}
+                        {type === "twitter" && (
+                            <img
+                                width="50"
+                                height="50"
+                                src="https://img.icons8.com/ios/50/twitterx--v2.png"
+                                alt="twitterx--v2"
+                                className={`w-5 h-5 object-contain transition-all ${
+                                    isDark ? "invert brightness-125" : "opacity-90"
                                 }`}
                             />
                         )}
@@ -532,12 +549,14 @@ export const Card = ({ _id, title, link, type, description, onDelete, onCopyToas
             {/* Card Content Body */}
             <div className="pt-2 flex flex-col flex-1 min-h-0 overflow-hidden">
                 {(type === "youtube" || type === "video") && (
-                    <div className="flex flex-col gap-1.5 w-full flex-1 min-h-0 justify-between">
-                        <div className="flex flex-col gap-1.5 min-h-0 flex-1">
-                            {/* 1. Video Thumbnail / Preview (flexes naturally so the note box below is never cramped) */}
+                    <div className="flex flex-col gap-2 w-full flex-1 min-h-0 justify-between">
+                        <div className="flex flex-col gap-2 min-h-0 flex-1">
+                            {/* 1. Video Thumbnail / Preview (Adaptively expands when no note to eliminate empty space) */}
                             <div 
                                 onClick={() => setPlayerOpen(true)}
-                                className="relative w-full rounded-xl overflow-hidden bg-black/60 border border-white/10 group/thumb cursor-pointer shadow-md flex-1 min-h-[85px] max-h-[108px]"
+                                className={`relative w-full rounded-xl overflow-hidden bg-black/60 border border-white/10 group/thumb cursor-pointer shadow-md transition-all duration-300 flex-1 ${
+                                    descText ? "min-h-[85px] max-h-[105px]" : "min-h-[140px] max-h-[175px]"
+                                }`}
                             >
                                 {type === "youtube" && ytThumbnailUrl && !thumbError ? (
                                     <img
@@ -570,8 +589,10 @@ export const Card = ({ _id, title, link, type, description, onDelete, onCopyToas
                                 
                                 {/* Play Button Overlay */}
                                 <div className="absolute inset-0 bg-black/20 group-hover/thumb:bg-black/50 transition-colors flex items-center justify-center">
-                                    <div className={`w-8 h-8 rounded-xl ${type === "video" ? "bg-emerald-600/90" : "bg-red-600/90"} text-white flex items-center justify-center shadow-lg transition-transform group-hover/thumb:scale-110`}>
-                                        <svg className="w-3.5 h-3.5 fill-current ml-0.5" viewBox="0 0 24 24">
+                                    <div className={`rounded-xl ${type === "video" ? "bg-emerald-600/90" : "bg-red-600/90"} text-white flex items-center justify-center shadow-lg transition-all duration-300 group-hover/thumb:scale-110 ${
+                                        descText ? "w-8 h-8" : "w-10 h-10"
+                                    }`}>
+                                        <svg className={`${descText ? "w-3.5 h-3.5" : "w-4 h-4"} fill-current ml-0.5`} viewBox="0 0 24 24">
                                             <path d="M8 5v14l11-7z"/>
                                         </svg>
                                     </div>
@@ -602,7 +623,14 @@ export const Card = ({ _id, title, link, type, description, onDelete, onCopyToas
                                     }`}
                                     title="Open Original Link"
                                 >
-                                    <span>Open ↗</span>
+                                    <span>Open</span>
+                                    <img
+                                        width="24"
+                                        height="24"
+                                        src="https://img.icons8.com/material-outlined/24/external-link.png"
+                                        alt="external-link"
+                                        className={`w-3.5 h-3.5 object-contain ${isDark ? "invert opacity-85" : "opacity-75"}`}
+                                    />
                                 </a>
                             </div>
                         </div>
@@ -614,15 +642,55 @@ export const Card = ({ _id, title, link, type, description, onDelete, onCopyToas
 
                 {type === "twitter" && (
                     <div className="flex flex-col gap-2 w-full flex-1 min-h-0 justify-between">
-                        <div className={`flex-1 min-h-0 overflow-y-auto overflow-x-hidden rounded-xl border flex justify-center ${
-                            isDark ? "bg-[#181715] border-white/10 text-white" : "bg-white border-gray-200 text-black"
+                        {/* Twitter Embed Container with hidden scrollbars and clean framing */}
+                        <div className={`flex-1 min-h-0 overflow-y-auto overflow-x-hidden rounded-xl border flex justify-center [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden p-1 ${
+                            isDark ? "bg-black/40 border-white/10 text-white" : "bg-white border-gray-200 text-black"
                         }`}> 
-                            <div className="w-full max-w-full scale-[0.98] origin-top">
-                                <blockquote className="twitter-tweet m-0" data-theme={isDark ? "dark" : "light"}>
+                            <div className="w-full max-w-full flex justify-center">
+                                <blockquote className="twitter-tweet m-0" data-theme={isDark ? "dark" : "light"} data-dnt="true">
                                     <a href={link.replace("x.com", "twitter.com")}></a>
                                 </blockquote>
                             </div>
                         </div>
+
+                        {/* Action Buttons Row matching Video & PDF cards for perfect symmetry */}
+                        <div className="flex items-center gap-2 shrink-0">
+                            <a
+                                href={link}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex-1 py-1 px-2.5 rounded-lg bg-sky-500 hover:bg-sky-600 active:scale-95 text-white text-[11px] font-bold transition-all flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
+                            >
+                                <img
+                                    width="50"
+                                    height="50"
+                                    src="https://img.icons8.com/ios/50/twitterx--v2.png"
+                                    alt="twitterx--v2"
+                                    className="w-3.5 h-3.5 object-contain invert brightness-125"
+                                />
+                                <span>View on X</span>
+                            </a>
+                            <a
+                                href={link}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className={`py-1 px-2.5 rounded-lg active:scale-95 text-[11px] font-semibold transition-all flex items-center gap-1 cursor-pointer border ${
+                                    isDark ? "bg-white/10 hover:bg-white/20 text-gray-200 border-transparent" : "bg-white hover:bg-gray-50 text-gray-700 border-gray-200 shadow-xs"
+                                }`}
+                                title="Open Original Link"
+                            >
+                                <span>Open</span>
+                                <img
+                                    width="24"
+                                    height="24"
+                                    src="https://img.icons8.com/material-outlined/24/external-link.png"
+                                    alt="external-link"
+                                    className={`w-3.5 h-3.5 object-contain ${isDark ? "invert opacity-85" : "opacity-75"}`}
+                                />
+                            </a>
+                        </div>
+
+                        {/* Read-only note or placeholder */}
                         {renderReadOnlyNote()}
                     </div>
                 )}
@@ -681,9 +749,16 @@ export const Card = ({ _id, title, link, type, description, onDelete, onCopyToas
                                     <button
                                         type="button"
                                         onClick={() => setReaderOpen(true)}
-                                        className="flex-1 py-1 px-2 rounded-lg bg-red-600 hover:bg-red-700 active:scale-95 text-white text-[11px] font-bold transition-all flex items-center justify-center gap-1 shadow-xs cursor-pointer"
+                                        className="flex-1 py-1 px-2.5 rounded-lg bg-red-600 hover:bg-red-700 active:scale-95 text-white text-[11px] font-bold transition-all flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
                                     >
-                                        <span>Read Document 📖</span>
+                                        <img
+                                            width="64"
+                                            height="64"
+                                            src="https://img.icons8.com/glyph-neue/64/read.png"
+                                            alt="read"
+                                            className="w-4.5 h-4.5 object-contain invert brightness-125"
+                                        />
+                                        <span>Read</span>
                                     </button>
                                     <a
                                         href={link}
@@ -694,7 +769,14 @@ export const Card = ({ _id, title, link, type, description, onDelete, onCopyToas
                                         }`}
                                         title="Open Original Link"
                                     >
-                                        <span>Open ↗</span>
+                                        <span>Open</span>
+                                        <img
+                                            width="24"
+                                            height="24"
+                                            src="https://img.icons8.com/material-outlined/24/external-link.png"
+                                            alt="external-link"
+                                            className={`w-3.5 h-3.5 object-contain ${isDark ? "invert opacity-85" : "opacity-75"}`}
+                                        />
                                     </a>
                                 </div>
                             </div>
@@ -755,9 +837,13 @@ export const Card = ({ _id, title, link, type, description, onDelete, onCopyToas
                                     isDark ? "text-purple-400" : "text-purple-600"
                                 }`}>
                                     <span>Open Link</span>
-                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                                    </svg>
+                                    <img
+                                        width="24"
+                                        height="24"
+                                        src="https://img.icons8.com/material-outlined/24/external-link.png"
+                                        alt="external-link"
+                                        className={`w-4 h-4 object-contain ${isDark ? "invert opacity-85" : "opacity-75"}`}
+                                    />
                                 </div>
                             </div>
                         </a>
