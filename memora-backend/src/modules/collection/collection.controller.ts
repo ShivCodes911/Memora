@@ -280,7 +280,7 @@ export const getSharedCollection=async(req:Request,res:Response)=>{
             })
         };
 
-        const content=await contentModel.find({collectionId:collection._id,userId:collection.userId}).sort({ _id: 1 });
+        const content = await contentModel.find({ collectionId: collection._id }).sort({ _id: 1 });
         const user=await userModel.findById(collection.userId).select("username");
 
         if(!user){
@@ -289,26 +289,111 @@ export const getSharedCollection=async(req:Request,res:Response)=>{
             })
         };
 
-        
         return res.status(200).json({
-    message:"collection Fetched !!",
-    data:{
-        username:user.username,
-        collection:{
-            title:collection.title,
-            icon:collection.icon
-        },
-        content
-    }
-    })
-
-}
- catch (error) {
-          console.error("getshareCollection failed",error);
+            message:"collection Fetched !!",
+            data:{
+                username:user.username,
+                collection:{
+                    _id:collection._id,
+                    title:collection.title,
+                    icon:collection.icon,
+                    userId:collection.userId
+                },
+                content
+            }
+        });
+    } catch (error) {
+        console.error("getshareCollection failed",error);
         return res.status(500).json({
-        message:"Internal server error"
-    });
-
-        
+            message:"Internal server error"
+        });
     }
-}
+};
+
+// save / clone a shared collection into the logged-in user's vault
+export const saveSharedCollection = async (req: Request, res: Response) => {
+    try {
+        const userId = req.userId;
+        if (!userId) {
+            return res.status(401).json({ message: "Unauthorized" });
+        }
+
+        const shareHash = req.params.shareHash;
+        if (!shareHash) {
+            return res.status(400).json({ message: "Provide a valid share link" });
+        }
+
+        const sourceCollection = await collectionModel.findOne({ shareHash });
+        if (!sourceCollection) {
+            return res.status(404).json({ message: "Collection not found or share link has expired" });
+        }
+
+        // If the user already owns this collection
+        if (sourceCollection.userId.toString() === userId.toString()) {
+            return res.status(200).json({
+                message: "This collection is already in your vault!",
+                isOwner: true,
+                collection: sourceCollection,
+                savedCount: 0
+            });
+        }
+
+        // Check if target user already has a collection with this title or create one
+        let targetCollection = await collectionModel.findOne({
+            userId,
+            title: sourceCollection.title
+        });
+
+        if (!targetCollection) {
+            targetCollection = await collectionModel.create({
+                title: sourceCollection.title,
+                icon: sourceCollection.icon || "📁",
+                userId
+            });
+        }
+
+        // Find all memories inside this source collection
+        const sourceContents = await contentModel.find({
+            collectionId: sourceCollection._id
+        });
+
+        let savedCount = 0;
+        for (const item of sourceContents) {
+            try {
+                const existing = await contentModel.findOne({
+                    userId,
+                    link: item.link,
+                    collectionId: targetCollection._id
+                });
+
+                if (!existing) {
+                    await contentModel.create({
+                        link: item.link,
+                        type: item.type,
+                        title: item.title,
+                        description: item.description || "",
+                        tags: item.tags || [],
+                        userId,
+                        collectionId: targetCollection._id
+                    });
+                    savedCount++;
+                }
+            } catch (itemErr) {
+                console.error("Error creating item during collection clone:", itemErr);
+            }
+        }
+
+        const message = savedCount > 0
+            ? `Collection "${targetCollection.title}" saved to your vault with ${savedCount} memories! 🎉`
+            : `Collection "${targetCollection.title}" is up to date in your vault!`;
+
+        return res.status(200).json({
+            message,
+            collection: targetCollection,
+            savedCount
+        });
+    } catch (error) {
+        console.error("saveSharedCollection failed", error);
+        return res.status(500).json({ message: "Internal server error" });
+    }
+};

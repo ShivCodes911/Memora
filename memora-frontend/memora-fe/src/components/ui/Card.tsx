@@ -18,13 +18,18 @@ declare global {
   }
 }
 
+import type { Collection } from "../../types/collection";
+
 interface CardProps {
     _id: string;
     title: string;
     link: string;
     type: ContentType;
     description?: string;
-    onDelete: (id: string) => void;
+    collectionId?: string | null;
+    collections?: Collection[];
+    onMoveCollection?: (contentId: string, collectionId: string | null) => void;
+    onDelete?: (id: string) => void;
     onCopyToast?: (msg: string) => void;
     isDark?: boolean;
 }
@@ -87,13 +92,23 @@ function getPdfViewerUrl(link: string) {
   }
 }
 
-export const Card = ({ _id, title, link, type, description, onDelete, onCopyToast, isDark }: CardProps) => {
+export const Card = ({ 
+    _id, 
+    title, 
+    link, 
+    type, 
+    description, 
+    collectionId,
+    collections = [],
+    onMoveCollection,
+    onDelete, 
+    onCopyToast, 
+    isDark 
+}: CardProps) => {
     const [metadata, setMetadata] = useState<LinkMetadata | null>(null);
     const [imgError, setImgError] = useState(false);
     const [readerOpen, setReaderOpen] = useState(false);
-    const [previewOpen, setPreviewOpen] = useState(false);
-    const [previewTab, setPreviewTab] = useState<"live" | "reader">("live");
-    const [iframeKey, setIframeKey] = useState(0);
+    const [isMoveMenuOpen, setIsMoveMenuOpen] = useState(false);
     
     // Description / Note states
     const [descText, setDescText] = useState(description || "");
@@ -145,10 +160,6 @@ export const Card = ({ _id, title, link, type, description, onDelete, onCopyToas
                     setIsFloatingPreviewActive(false);
                     return;
                 }
-                if (previewOpen) {
-                    setPreviewOpen(false);
-                    return;
-                }
                 if (readerOpen) {
                     setReaderOpen(false);
                     return;
@@ -170,7 +181,7 @@ export const Card = ({ _id, title, link, type, description, onDelete, onCopyToas
         };
         window.addEventListener("keydown", handleKeyDown);
         return () => window.removeEventListener("keydown", handleKeyDown);
-    }, [isEditingDesc, isNoteExpanded, description, previewOpen, readerOpen, playerOpen, isFloatingPreviewActive]);
+    }, [isEditingDesc, isNoteExpanded, description, readerOpen, playerOpen, isFloatingPreviewActive]);
 
     // Twitter widget loader
     useEffect(() => {
@@ -532,6 +543,10 @@ export const Card = ({ _id, title, link, type, description, onDelete, onCopyToas
         );
     };
 
+    if (type === "shared_brain") {
+        return null;
+    }
+
     return (
         <>
         <div className={`rounded-2xl border p-5 shadow-sm transition-[shadow,transform] duration-300 ease-out flex flex-col w-full group relative overflow-hidden h-[360px] ${
@@ -608,14 +623,95 @@ export const Card = ({ _id, title, link, type, description, onDelete, onCopyToas
                         }`} title={title}>
                             {title}
                         </h3>
-                        <span className={`text-[11px] font-semibold capitalize ${isDark ? "text-gray-400" : "text-gray-400"}`}>
-                            {isSharedBrain ? "Memora Vault" : (domainName || type)}
-                        </span>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className={`text-[11px] font-semibold capitalize ${isDark ? "text-gray-400" : "text-gray-400"}`}>
+                                {isSharedBrain ? "Memora Vault" : (domainName || type)}
+                            </span>
+                            {collectionId && collections && (() => {
+                                const matchedCol = collections.find(c => c._id === collectionId);
+                                if (!matchedCol) return null;
+                                return (
+                                    <span 
+                                        className="px-1.5 py-0.2 rounded text-[10px] font-medium bg-purple-500/15 text-purple-400 border border-purple-500/20 truncate max-w-[120px]"
+                                        title={`Collection: ${matchedCol.title}`}
+                                    >
+                                        {matchedCol.icon || "📁"} {matchedCol.title}
+                                    </span>
+                                );
+                            })()}
+                        </div>
                     </div>
                 </div>
                 
                 {/* Actions */}
                 <div className="flex items-center gap-1 shrink-0 text-gray-400">
+                    {/* Move to Collection Dropdown Button */}
+                    {onMoveCollection && collections && collections.length > 0 && (
+                        <div className="relative">
+                            <button
+                                type="button"
+                                onClick={() => setIsMoveMenuOpen(!isMoveMenuOpen)}
+                                className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                                    isDark ? "hover:bg-white/10 hover:text-white" : "hover:bg-gray-100 hover:text-gray-600"
+                                } ${isMoveMenuOpen ? "text-purple-400 bg-white/10" : ""}`}
+                                title="Move to Collection"
+                            >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                                </svg>
+                            </button>
+
+                            {isMoveMenuOpen && (
+                                <div 
+                                    onClick={(e) => e.stopPropagation()}
+                                    className={`absolute right-0 top-8 z-40 w-44 rounded-xl border shadow-2xl p-1 animate-in fade-in zoom-in-95 duration-150 ${
+                                        isDark ? "bg-[#222226] border-white/10 text-gray-200" : "bg-white border-gray-200 text-gray-800"
+                                    }`}
+                                >
+                                    <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                                        Move to folder
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setIsMoveMenuOpen(false);
+                                            onMoveCollection(_id, null);
+                                        }}
+                                        className={`w-full px-2.5 py-1.5 rounded-lg text-xs font-medium text-left transition-colors flex items-center justify-between cursor-pointer ${
+                                            !collectionId 
+                                                ? "bg-purple-600 text-white" 
+                                                : isDark ? "hover:bg-white/10" : "hover:bg-gray-100"
+                                        }`}
+                                    >
+                                        <span className="truncate">📁 General Vault</span>
+                                        {!collectionId && <span>✓</span>}
+                                    </button>
+                                    <div className="my-1 border-t border-white/5" />
+                                    <div className="max-h-36 overflow-y-auto flex flex-col gap-0.5">
+                                        {collections.map((c) => (
+                                            <button
+                                                key={c._id}
+                                                type="button"
+                                                onClick={() => {
+                                                    setIsMoveMenuOpen(false);
+                                                    onMoveCollection(_id, c._id);
+                                                }}
+                                                className={`w-full px-2.5 py-1.5 rounded-lg text-xs font-medium text-left transition-colors flex items-center justify-between cursor-pointer ${
+                                                    collectionId === c._id
+                                                        ? "bg-purple-600 text-white"
+                                                        : isDark ? "hover:bg-white/10" : "hover:bg-gray-100"
+                                                }`}
+                                            >
+                                                <span className="truncate">{c.icon || "📁"} {c.title}</span>
+                                                {collectionId === c._id && <span>✓</span>}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
                     <button 
                         onClick={handleCopy}
                         className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
@@ -625,15 +721,17 @@ export const Card = ({ _id, title, link, type, description, onDelete, onCopyToas
                     >
                         <ShareIcon size="md"/>
                     </button>
-                    <button 
-                        onClick={() => onDelete(_id)}
-                        className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
-                            isDark ? "hover:bg-red-500/20 hover:text-red-400" : "hover:bg-red-50 hover:text-red-500"
-                        }`}
-                        title="Delete Memory"
-                    >
-                        <Delete size="md"/>
-                    </button>
+                    {onDelete && (
+                        <button 
+                            onClick={() => onDelete(_id)}
+                            className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                                isDark ? "hover:bg-red-500/20 hover:text-red-400" : "hover:bg-red-50 hover:text-red-500"
+                            }`}
+                            title="Delete Memory"
+                        >
+                            <Delete size="md"/>
+                        </button>
+                    )}
                 </div>
             </div>
 
@@ -959,62 +1057,6 @@ export const Card = ({ _id, title, link, type, description, onDelete, onCopyToas
                         {renderReadOnlyNote()}
                     </div>
                 )}
-
-                {isSharedBrain && (
-                    <div className="flex flex-col gap-2 h-full w-full flex-1 min-h-0 justify-between">
-                        <div className={`flex-1 min-h-0 flex flex-col rounded-xl border overflow-hidden p-3 justify-between transition-colors ${
-                            isDark 
-                                ? "border-emerald-500/20 bg-gradient-to-b from-emerald-950/20 via-[#1a1818] to-[#141212]" 
-                                : "border-emerald-200 bg-gradient-to-b from-emerald-50 to-white shadow-sm"
-                        }`}>
-                            <div className="flex flex-col gap-2 min-h-0">
-                                <div className="flex items-center gap-2.5">
-                                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border ${
-                                        isDark ? "bg-emerald-500/15 border-emerald-500/20 text-emerald-500" : "bg-emerald-100 border-emerald-200 text-emerald-600"
-                                    }`}>
-                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-                                        </svg>
-                                    </div>
-                                    <div className="min-w-0 flex-1">
-                                        <span className={`text-[10px] font-bold uppercase tracking-wider block ${isDark ? "text-emerald-400" : "text-emerald-600"}`}>
-                                            Shared Brain Vault
-                                        </span>
-                                        <a 
-                                            href={link} 
-                                            target="_blank" 
-                                            rel="noopener noreferrer"
-                                            className={`text-xs font-bold hover:underline line-clamp-1 mt-0.5 cursor-pointer transition-colors ${
-                                                isDark ? "text-emerald-100 hover:text-emerald-400" : "text-gray-900 hover:text-emerald-700"
-                                            }`}
-                                        >
-                                            {title}
-                                        </a>
-                                    </div>
-                                </div>
-                                
-                                <div className={`p-2.5 rounded-xl border text-xs leading-relaxed flex items-start gap-2 ${
-                                    isDark ? "bg-white/5 border-white/5 text-gray-300" : "bg-white border-emerald-100 text-gray-600 shadow-sm"
-                                }`}>
-                                    <span className="text-emerald-500 text-sm">🧠</span>
-                                    <span className="line-clamp-2">{description || "Explore this shared knowledge collection."}</span>
-                                </div>
-                            </div>
-
-                            <div className={`flex items-center gap-2 pt-2 mt-1 border-t ${isDark ? "border-white/10" : "border-emerald-100"}`}>
-                                <a
-                                    href={link}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="flex-1 py-1.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-md cursor-pointer"
-                                >
-                                    <span>Open Vault ↗️</span>
-                                </a>
-                            </div>
-                        </div>
-                        {renderReadOnlyNote()}
-                    </div>
-                )}
             </div>
 
             {/* Upward-Opening Note Panel (Reading / Expanded Mode and Edit Mode) */}
@@ -1130,242 +1172,7 @@ export const Card = ({ _id, title, link, type, description, onDelete, onCopyToas
             document.body
         )}
 
-        {/* Full Website / Article Preview Modal with Authentic Browser Tab Interface */}
-        {previewOpen && typeof document !== "undefined" && createPortal(
-            <div 
-                onClick={() => setPreviewOpen(false)}
-                className="fixed inset-0 z-[9999] bg-black/85 backdrop-blur-2xl flex flex-col items-center justify-center p-2 sm:p-5 animate-in fade-in duration-200"
-                style={{ backdropFilter: 'blur(28px)', WebkitBackdropFilter: 'blur(28px)' }}
-            >
-                <div 
-                    onClick={(e) => e.stopPropagation()}
-                    className="w-full max-w-5xl h-[84vh] bg-[#161616] dark:bg-[#121212] border border-white/15 rounded-2xl shadow-2xl overflow-hidden flex flex-col relative"
-                >
-                    {/* Top: Browser Window Titlebar & Tab Strip */}
-                    <div className="flex items-center justify-between px-3 pt-2.5 pb-1 bg-[#1f1f1f] border-b border-white/10 shrink-0 gap-2 select-none">
-                        {/* Window Dots (Mac-style) */}
-                        <div className="flex items-center gap-2 pl-1 pr-3">
-                            <button
-                                type="button"
-                                onClick={() => setPreviewOpen(false)}
-                                className="w-3 h-3 rounded-full bg-red-500/80 hover:bg-red-500 transition-colors cursor-pointer border border-red-600/50"
-                                title="Close Window (ESC)"
-                            />
-                            <button
-                                type="button"
-                                onClick={() => setPreviewOpen(false)}
-                                className="w-3 h-3 rounded-full bg-yellow-500/80 hover:bg-yellow-500 transition-colors cursor-pointer border border-yellow-600/50"
-                                title="Minimize"
-                            />
-                            <button
-                                type="button"
-                                onClick={() => openFloatingBrowser(normalizedLink)}
-                                className="w-3 h-3 rounded-full bg-emerald-500/80 hover:bg-emerald-500 transition-colors cursor-pointer border border-emerald-600/50"
-                                title="Pop Out into Standalone Tab"
-                            />
-                        </div>
 
-                        {/* Browser Tab (Clickable to open in real browser tab) */}
-                        <div className="flex items-center flex-1 max-w-md min-w-0">
-                            <a
-                                href={normalizedLink}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex items-center gap-2 px-3 py-1.5 rounded-t-xl bg-[#2a2a2a] hover:bg-[#333333] border-t border-x border-white/10 text-white text-xs font-medium w-full shadow-sm transition-colors group/tab cursor-pointer"
-                                title="Click to open this link in a real browser tab"
-                            >
-                                {metadata?.favicon ? (
-                                    <img src={metadata.favicon} alt="" className="w-4 h-4 rounded-sm object-contain shrink-0" />
-                                ) : (
-                                    <span className="w-2 h-2 rounded-full bg-purple-400 shrink-0"></span>
-                                )}
-                                <span className="truncate flex-1 text-gray-200 group-hover/tab:text-white text-[11px] font-medium" title={metadata?.title || title}>
-                                    {metadata?.title || title}
-                                </span>
-                                <span className="text-gray-400 group-hover/tab:text-white text-[11px] opacity-70 group-hover/tab:opacity-100" title="Open in new tab">
-                                    ↗
-                                </span>
-                                <button
-                                    type="button"
-                                    onClick={(e) => {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        setPreviewOpen(false);
-                                    }}
-                                    className="p-0.5 rounded hover:bg-white/20 text-gray-400 hover:text-white transition-colors cursor-pointer text-[10px] ml-1"
-                                    title="Close Tab (ESC)"
-                                >
-                                    ✕
-                                </button>
-                            </a>
-                        </div>
-
-                        {/* Window Actions */}
-                        <div className="flex items-center gap-1.5 shrink-0 pr-1">
-                            <button
-                                type="button"
-                                onClick={() => openFloatingBrowser(normalizedLink)}
-                                className="px-2 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-gray-300 hover:text-white text-[11px] font-medium transition-all flex items-center gap-1.5 border border-white/10 cursor-pointer"
-                                title="Open in floating popup window"
-                            >
-                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                                </svg>
-                                <span className="hidden sm:inline">Pop Out</span>
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setPreviewOpen(false)}
-                                className="p-1 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer text-sm font-bold flex items-center justify-center w-7 h-7"
-                                title="Close (ESC)"
-                            >
-                                ✕
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* Middle: Browser Toolbar / Omnibox */}
-                    <div className="px-3 py-2 bg-[#252525] border-b border-white/10 flex items-center gap-2 sm:gap-3 shrink-0 flex-wrap">
-                        {/* Navigation Buttons: Reload */}
-                        <div className="flex items-center gap-1 text-gray-400">
-                            <button 
-                                type="button"
-                                onClick={() => setIframeKey(k => k + 1)}
-                                className="p-1.5 rounded-lg hover:bg-white/10 hover:text-white transition-colors cursor-pointer"
-                                title="Reload Page (↻)"
-                            >
-                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                                </svg>
-                            </button>
-                        </div>
-
-                        {/* Omnibox / URL Address Bar */}
-                        <div className="flex-1 min-w-[200px] flex items-center gap-2 px-3 py-1.5 bg-[#181818] border border-white/10 rounded-xl text-xs text-gray-300 font-mono shadow-inner">
-                            <span className="text-emerald-400 text-xs shrink-0" title="Secure Link">🔒</span>
-                            <span className="truncate flex-1 text-[11px]">{normalizedLink}</span>
-                            <span className="px-1.5 py-0.5 rounded text-[9px] uppercase font-bold tracking-wider bg-purple-500/20 text-purple-300 border border-purple-500/30 shrink-0 hidden sm:inline">
-                                Unblocked Stream
-                            </span>
-                        </div>
-
-                        {/* View Mode Toggle: Live Web vs Reader Mode */}
-                        <div className="flex items-center p-0.5 rounded-lg bg-black/40 border border-white/10 shrink-0">
-                            <button
-                                type="button"
-                                onClick={() => setPreviewTab("live")}
-                                className={`px-2.5 py-1 rounded-md text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
-                                    previewTab === "live"
-                                        ? "bg-purple-600 text-white shadow-xs"
-                                        : "text-gray-400 hover:text-white"
-                                }`}
-                            >
-                                <span>🌐 Live Web</span>
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setPreviewTab("reader")}
-                                className={`px-2.5 py-1 rounded-md text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
-                                    previewTab === "reader"
-                                        ? "bg-purple-600 text-white shadow-xs"
-                                        : "text-gray-400 hover:text-white"
-                                }`}
-                            >
-                                <span>📖 Reader</span>
-                            </button>
-                        </div>
-
-                        {/* Direct Browser Tab Button */}
-                        <a
-                            href={normalizedLink}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold transition-all flex items-center gap-1.5 shadow-sm active:scale-95 shrink-0"
-                            title="Open in new browser tab"
-                        >
-                            <span>Open Tab</span>
-                            <img
-                                width="24"
-                                height="24"
-                                src="https://img.icons8.com/material-outlined/24/external-link.png"
-                                alt="external-link"
-                                className="w-3.5 h-3.5 object-contain invert brightness-125"
-                            />
-                        </a>
-                    </div>
-
-                    {/* Mode 1: Live Web View (Unblocked Live Proxy Frame) */}
-                    {previewTab === "live" ? (
-                        <div className="flex-1 w-full flex flex-col min-h-0 bg-white relative">
-                            <iframe
-                                key={iframeKey}
-                                src={`${BACKEND_URL}/api/v1/content/proxy?url=${encodeURIComponent(normalizedLink)}`}
-                                className="w-full h-full border-0 bg-white"
-                                title={title}
-                                loading="eager"
-                            />
-                        </div>
-                    ) : (
-                        /* Mode 2: Reader View (Full Article Info, Cover Image, & Notes) */
-                        <div className="flex-1 overflow-y-auto p-5 sm:p-8 flex flex-col gap-5 max-w-4xl mx-auto w-full">
-                            {metadata?.image && (
-                                <div className="w-full max-h-[380px] rounded-2xl overflow-hidden border border-white/10 shadow-lg shrink-0 bg-black/40">
-                                    <img
-                                        src={metadata.image}
-                                        alt={title}
-                                        className="w-full h-full object-cover"
-                                    />
-                                </div>
-                            )}
-                            <div className="flex flex-col gap-3">
-                                <div className="flex items-center gap-2">
-                                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-purple-500/20 text-purple-300 border border-purple-500/30">
-                                        {metadata?.domain || domainName || "Article"}
-                                    </span>
-                                </div>
-                                <h2 className="text-xl sm:text-2xl font-bold text-white leading-tight">
-                                    {metadata?.title || title}
-                                </h2>
-                                {metadata?.description && (
-                                    <p className="text-sm sm:text-base text-gray-300 leading-relaxed whitespace-pre-wrap">
-                                        {metadata.description}
-                                    </p>
-                                )}
-                            </div>
-
-                            {/* Personal Note Box */}
-                            {descText && (
-                                <div className="mt-2 p-4 rounded-xl bg-purple-500/10 border border-purple-500/25">
-                                    <span className="text-[11px] font-bold uppercase tracking-wider text-purple-400 block mb-1.5">
-                                        Your Note
-                                    </span>
-                                    <p className="text-xs sm:text-sm text-gray-200 whitespace-pre-wrap leading-relaxed">
-                                        {descText}
-                                    </p>
-                                </div>
-                            )}
-
-                            {/* Direct Open Link Callout */}
-                            <div className="mt-2 p-4 rounded-xl border border-white/10 bg-white/[0.02] flex items-center justify-between">
-                                <span className="text-xs text-gray-400 truncate pr-3">
-                                    Read full interactive article on <span className="text-white font-semibold">{metadata?.domain || domainName || "original site"}</span>
-                                </span>
-                                <a
-                                    href={normalizedLink}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold transition-all shrink-0 flex items-center gap-1.5 shadow-md active:scale-95"
-                                >
-                                    <span>Read on Site</span>
-                                    <span>↗</span>
-                                </a>
-                            </div>
-                        </div>
-                    )}
-                </div>
-            </div>,
-            document.body
-        )}
 
         {/* Blurred Previous Tab Overlay when Floating Preview Window is Open */}
         {isFloatingPreviewActive && typeof document !== "undefined" && createPortal(

@@ -6,4 +6,5 @@ export interface Content {
   link: string;
   type: ContentType;
   description?: string;
+  collectionId?: string | null;
 }

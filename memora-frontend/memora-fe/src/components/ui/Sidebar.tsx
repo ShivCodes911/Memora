@@ -22,6 +22,7 @@ export interface SidebarProps {
   currentWorkspace?: string;
   onWorkspaceSelect?: (workspaceId: string) => void;
   sharedBrains?: Content[];
+  onDeleteBrain?: (brainId: string) => void;
 }
 
 export function Sidebar({
@@ -35,6 +36,7 @@ export function Sidebar({
   currentWorkspace = "personal",
   onWorkspaceSelect,
   sharedBrains = [],
+  onDeleteBrain,
 }: SidebarProps) {
   const [sharedExpanded, setSharedExpanded] = useState(true);
   const [workspaceSearch, setWorkspaceSearch] = useState("");
@@ -111,8 +113,20 @@ export function Sidebar({
 
         {/* Navigation Items List */}
         <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-1">
-          <div className="px-3 pt-2 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-500">
-            Workspace
+          <div className="px-3 pt-2 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-500 flex items-center justify-between">
+            <span>{currentWorkspace === "personal" ? "My Workspace" : "Personal Vault"}</span>
+            {currentWorkspace !== "personal" && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (onWorkspaceSelect) onWorkspaceSelect("personal");
+                  onSelectTab("home");
+                }}
+                className="text-[10px] text-purple-400 hover:text-purple-300 font-semibold cursor-pointer lowercase tracking-normal"
+              >
+                ← back
+              </button>
+            )}
           </div>
 
           {items.map((item) => (
@@ -171,37 +185,62 @@ export function Sidebar({
                   </div>
                 )}
 
-                {filteredSharedBrains.map((brain) => (
-                  <div
-                    key={brain._id}
-                    onClick={() => {
-                      if (onWorkspaceSelect) {
-                        const hash = brain.link.split("/share/")[1];
-                        if (hash) onWorkspaceSelect(hash);
-                      }
-                    }}
-                    className={`flex items-center gap-2.5 px-3 py-2 rounded-lg cursor-pointer transition-all duration-200 group ${
-                      currentWorkspace === brain.link.split("/share/")[1]
-                        ? isDark 
-                          ? "bg-emerald-500/10 text-emerald-400" 
-                          : "bg-emerald-50 text-emerald-700 font-medium"
-                        : isDark
-                          ? "text-gray-400 hover:bg-white/5 hover:text-gray-200"
-                          : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-                    }`}
-                  >
-                    <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold uppercase shrink-0 ${
-                      currentWorkspace === brain.link.split("/share/")[1]
-                        ? isDark ? "bg-emerald-500/20 text-emerald-400" : "bg-emerald-100 text-emerald-700"
-                        : isDark ? "bg-white/10 text-gray-400 group-hover:text-gray-200" : "bg-gray-200 text-gray-600 group-hover:text-gray-900"
-                    }`}>
-                      {brain.title ? brain.title.charAt(0) : "?"}
+                {filteredSharedBrains.map((brain) => {
+                  const hash = brain.link.split("/share/")[1];
+                  const isCurrent = Boolean(hash && currentWorkspace === hash);
+                  return (
+                    <div
+                      key={brain._id}
+                      onClick={() => {
+                        if (onWorkspaceSelect && hash) {
+                          onWorkspaceSelect(hash);
+                          onSelectTab("home");
+                        }
+                      }}
+                      className={`flex items-center gap-2.5 px-3 py-2 rounded-lg cursor-pointer transition-all duration-200 group ${
+                        isCurrent
+                          ? isDark 
+                            ? "bg-purple-600/20 text-purple-300 font-semibold border border-purple-500/30" 
+                            : "bg-purple-50 text-purple-700 font-semibold border border-purple-200"
+                          : isDark
+                            ? "text-gray-400 hover:bg-white/5 hover:text-gray-200"
+                            : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                      }`}
+                    >
+                      <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold uppercase shrink-0 ${
+                        isCurrent
+                          ? "bg-purple-600 text-white shadow-sm"
+                          : isDark ? "bg-white/10 text-gray-400 group-hover:text-gray-200" : "bg-gray-200 text-gray-600 group-hover:text-gray-900"
+                      }`}>
+                        <img 
+                          width="64" 
+                          height="64" 
+                          src="https://img.icons8.com/pastel-glyph/64/brain-3--v1.png" 
+                          alt="brain-3--v1" 
+                          className={`w-3.5 h-3.5 object-contain ${isCurrent || isDark ? "invert brightness-125" : "brightness-0 opacity-80"}`}
+                        />
+                      </div>
+                      <span className="text-xs truncate select-none flex-1">
+                        {brain.title || "Unknown Brain"}
+                      </span>
+                      {onDeleteBrain && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (window.confirm(`Disconnect "${brain.title}" from your shared brains?`)) {
+                              onDeleteBrain(brain._id);
+                            }
+                          }}
+                          className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-red-500/20 text-gray-400 hover:text-red-400 transition-all text-[11px] cursor-pointer shrink-0"
+                          title="Remove shared brain connection"
+                        >
+                          ✕
+                        </button>
+                      )}
                     </div>
-                    <span className="text-sm truncate select-none">
-                      {brain.title || "Unknown Brain"}
-                    </span>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

@@ -314,8 +314,9 @@ export const fetchSharedContent=async(req:Request,res:Response)=>{
             //for other users
 
 
-            const content= await contentModel.find({
-                userId:link.userId
+            const content = await contentModel.find({
+                userId: link.userId,
+                type: { $ne: "shared_brain" }
             }).sort({ _id: 1 });
 
             
@@ -459,87 +460,145 @@ export const fetchMetadata = async (req: Request, res: Response) => {
     }
 };
 
-export const proxyWebsite = async (req: Request, res: Response) => {
+// Save / clone an entire shared brain (all cards and collections) into the user's vault
+export const saveSharedBrainContent = async (req: Request, res: Response) => {
     try {
-        const urlStr = req.query.url as string;
-        if (!urlStr) {
-            return res.status(400).send("URL parameter is required");
+        const userId = req.userId;
+        if (!userId) {
+            return res.status(401).json({ message: "Unauthorized" });
         }
 
-        const targetUrl = urlStr.startsWith("http://") || urlStr.startsWith("https://") ? urlStr : `https://${urlStr}`;
-        const parsedUrl = new URL(targetUrl);
+        const shareLink = req.params.shareLink;
+        if (!shareLink) {
+            return res.status(400).json({ message: "Provide a valid share link" });
+        }
 
-        const response = await fetch(targetUrl, {
-            headers: {
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-                "Accept-Language": "en-US,en;q=0.9"
-            },
-            redirect: "follow",
-            signal: AbortSignal.timeout(12000)
+        const link = await linkModel.findOne({ hash: shareLink });
+        if (!link) {
+            return res.status(404).json({ message: "Brain collection not found or link is private." });
+        }
+
+        const ownerUser = await userModel.findById(link.userId).select("username");
+        if (!ownerUser) {
+            return res.status(404).json({ message: "Owner user not found" });
+        }
+
+        const ownerUserId = link.userId;
+        const targetUserId = new mongoose.Types.ObjectId(userId);
+
+        // If user is owner saving their own brain:
+        if (ownerUserId.toString() === userId.toString()) {
+            return res.status(200).json({
+                message: "This is your own brain! All memories are already in your vault.",
+                isOwner: true,
+                savedCount: 0
+            });
+        }
+
+        // 1. Prevent duplicate saves: check if user already saved this brain
+        const existingBrainEntry = await contentModel.findOne({
+            userId: targetUserId,
+            type: "shared_brain",
+            $or: [
+                { link: `/share/${shareLink}` },
+                { link: { $regex: new RegExp(`share/${shareLink}$`) } },
+                { title: `${ownerUser.username}'s Brain` }
+            ]
         });
 
-        const contentType = response.headers.get("content-type") || "text/html";
-        let body = await response.text();
-
-        // Inject <base> tag so relative styles, images, and fonts load correctly from original host
-        const baseTag = `<base href="${parsedUrl.origin}${parsedUrl.pathname}" target="_blank">`;
-        if (body.includes("<head>")) {
-            body = body.replace("<head>", `<head>${baseTag}`);
-        } else if (body.includes("<HEAD>")) {
-            body = body.replace("<HEAD>", `<HEAD>${baseTag}`);
-        } else {
-            body = baseTag + body;
+        if (existingBrainEntry) {
+            return res.status(200).json({
+                message: `${ownerUser.username}'s Brain is already in your shared brains!`,
+                alreadySaved: true,
+                savedCount: 0
+            });
         }
 
-        // Set response headers without frame restrictions
-        res.setHeader("Content-Type", contentType);
-        res.removeHeader("X-Frame-Options");
-        res.removeHeader("Content-Security-Policy");
-        res.setHeader("Content-Security-Policy", "frame-ancestors *");
-        return res.send(body);
+        // 2. Create the single "shared_brain" connection entry
+        await contentModel.create({
+            userId: targetUserId,
+            type: "shared_brain",
+            title: `${ownerUser.username}'s Brain`,
+            link: `/share/${shareLink}`,
+            description: `Public Knowledge Collection shared by ${ownerUser.username}`,
+            tags: []
+        });
+
+        // 2. Fetch all memories belonging to the shared user (excluding shared_brain pointers)
+        const sourceContents = await contentModel.find({
+            userId: ownerUserId,
+            type: { $ne: "shared_brain" }
+        }).sort({ _id: 1 });
+
+        // Map original collectionIds to new/existing collectionIds for the target user
+        const collectionMap = new Map<string, mongoose.Types.ObjectId>();
+
+        let clonedCount = 0;
+        for (const item of sourceContents) {
+            try {
+                let targetCollectionId: mongoose.Types.ObjectId | null = null;
+
+                if (item.collectionId) {
+                    const sourceColIdStr = item.collectionId.toString();
+                    if (collectionMap.has(sourceColIdStr)) {
+                        targetCollectionId = collectionMap.get(sourceColIdStr)!;
+                    } else {
+                        const sourceCol = await collectionModel.findById(item.collectionId);
+                        if (sourceCol) {
+                            let targetCol = await collectionModel.findOne({
+                                userId: targetUserId,
+                                title: sourceCol.title
+                            });
+                            if (!targetCol) {
+                                targetCol = await collectionModel.create({
+                                    userId: targetUserId,
+                                    title: sourceCol.title,
+                                    icon: sourceCol.icon || "📁"
+                                });
+                            }
+                            targetCollectionId = targetCol._id as mongoose.Types.ObjectId;
+                            collectionMap.set(sourceColIdStr, targetCol._id as mongoose.Types.ObjectId);
+                        }
+                    }
+                }
+
+                // Check if user already has this link saved in this collection or general vault
+                const existing = await contentModel.findOne({
+                    userId: targetUserId,
+                    link: item.link,
+                    collectionId: targetCollectionId
+                });
+
+                if (!existing) {
+                    await contentModel.create({
+                        userId: targetUserId,
+                        link: item.link,
+                        type: item.type,
+                        title: item.title,
+                        description: item.description || "",
+                        tags: item.tags || [],
+                        collectionId: targetCollectionId
+                    });
+                    clonedCount++;
+                }
+            } catch (err) {
+                console.error("Error cloning memory from shared brain:", err);
+            }
+        }
+
+        const message = clonedCount > 0
+            ? `Saved ${ownerUser.username}'s Brain with ${clonedCount} memories to your vault! 🎉`
+            : `All memories from ${ownerUser.username}'s Brain are already up to date in your vault!`;
+
+        return res.status(200).json({
+            message,
+            savedCount: clonedCount,
+            totalSourceItems: sourceContents.length
+        });
     } catch (error) {
-        console.error("Proxy website error:", error);
-        return res.status(502).send(`
-            <!DOCTYPE html>
-            <html>
-                <head>
-                    <meta charset="utf-8">
-                    <title>Live Preview</title>
-                    <style>
-                        body {
-                            background: #121212;
-                            color: #e0e0e0;
-                            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-                            display: flex;
-                            align-items: center;
-                            justify-content: center;
-                            height: 100vh;
-                            margin: 0;
-                            padding: 20px;
-                            box-sizing: border-box;
-                            text-align: center;
-                        }
-                        .box {
-                            max-width: 480px;
-                            background: #1a1a1a;
-                            border: 1px solid rgba(255,255,255,0.1);
-                            padding: 32px;
-                            border-radius: 16px;
-                            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
-                        }
-                        h2 { margin-top: 0; color: #fff; font-size: 18px; }
-                        p { font-size: 13px; color: #aaa; line-height: 1.6; }
-                    </style>
-                </head>
-                <body>
-                    <div class="box">
-                        <h2>Live Stream Restricted</h2>
-                        <p>This site blocks live embedded streaming. Please switch to <strong>Reader View</strong> or click <strong>Open Original Tab</strong> above to view it in full.</p>
-                    </div>
-                </body>
-            </html>
-        `);
+        console.error("saveSharedBrainContent failed", error);
+        return res.status(500).json({ message: "Internal server error" });
     }
 };
+
 

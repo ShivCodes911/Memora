@@ -3,7 +3,7 @@ import { CrossIcon } from "../../icons/crossIcon";
 import axios from "axios";
 import { BACKEND_URL } from "../../config";
 import type { ContentType } from "../../types/content";
-
+import type { Collection } from "../../types/collection";
 import { YoutubeIcon } from "../../icons/youtube";
 import { PdfIcon } from "../../icons/pdfIcon";
 
@@ -12,6 +12,8 @@ interface ContentModalProps {
     onClose: () => void;
     type?: ContentType;
     onSuccess?: () => void;
+    collections?: Collection[];
+    defaultCollectionId?: string | null;
 }
 
 interface LinkMetadata {
@@ -59,11 +61,19 @@ function isValidUrl(str: string): boolean {
     }
 }
 
-export function CreateContentModal({ open, onClose, type: initialType = "youtube", onSuccess }: ContentModalProps) {
+export function CreateContentModal({ 
+    open, 
+    onClose, 
+    type: initialType = "youtube", 
+    onSuccess,
+    collections = [],
+    defaultCollectionId = null,
+}: ContentModalProps) {
     const titleRef = useRef<HTMLInputElement | null>(null);
     const linkRef = useRef<HTMLInputElement | null>(null);
     const descRef = useRef<HTMLTextAreaElement | null>(null);
     const [type, setType] = useState<ContentType>(initialType);
+    const [selectedCollectionId, setSelectedCollectionId] = useState<string | null>(defaultCollectionId || null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [metadata, setMetadata] = useState<LinkMetadata | null>(null);
@@ -75,13 +85,14 @@ export function CreateContentModal({ open, onClose, type: initialType = "youtube
     // Reset state when modal opens/closes
     useEffect(() => {
         if (open) {
+            setSelectedCollectionId(defaultCollectionId || null);
             setMetadata(null);
             setFetchingMeta(false);
             setTitleManuallyEdited(false);
             setError(null);
             setIsDropdownOpen(false);
         }
-    }, [open]);
+    }, [open, defaultCollectionId]);
 
     const fetchMetadata = useCallback(async (url: string) => {
         if (!isValidUrl(url)) return;
@@ -151,7 +162,7 @@ export function CreateContentModal({ open, onClose, type: initialType = "youtube
             setLoading(true);
             await axios.post(
                 `${BACKEND_URL}/api/v1/content`,
-                { link, type, title, description },
+                { link, type, title, description, collectionId: selectedCollectionId || null },
                 {
                     headers: {
                         Authorization: `Bearer ${localStorage.getItem("token")}`
@@ -297,6 +308,27 @@ export function CreateContentModal({ open, onClose, type: initialType = "youtube
                                     <p className="text-[11px] text-gray-500 dark:text-gray-400 line-clamp-2 mt-0.5">{metadata.description}</p>
                                 )}
                             </div>
+                        </div>
+                    )}
+
+                    {/* Collection Selector */}
+                    {collections && collections.length > 0 && (
+                        <div>
+                            <label className="text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider block mb-1.5">
+                                Collection <span className="font-normal lowercase">(optional folder)</span>
+                            </label>
+                            <select
+                                value={selectedCollectionId || ""}
+                                onChange={(e) => setSelectedCollectionId(e.target.value || null)}
+                                className="w-full px-4 py-2.5 rounded-xl bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white text-sm focus:border-purple-500 dark:focus:border-purple-500 outline-none transition-all cursor-pointer"
+                            >
+                                <option value="">📁 General Vault (No Collection)</option>
+                                {collections.map((c) => (
+                                    <option key={c._id} value={c._id}>
+                                        {c.icon || "📁"} {c.title}
+                                    </option>
+                                ))}
+                            </select>
                         </div>
                     )}
 
