@@ -3,6 +3,7 @@ export interface Collection {
   title: string;
   icon: string;
   userId: string;
+  parentId?: string | null;
   shareHash?: string;
   createdAt?: string;
   updatedAt?: string;

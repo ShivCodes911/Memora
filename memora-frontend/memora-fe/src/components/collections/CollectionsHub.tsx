@@ -37,11 +37,27 @@ export function CollectionsHub({
     return map;
   }, [contents]);
 
+  // Recursive item counter including all subfolders
+  const getTotalItemsCount = (colId: string): number => {
+    let count = countsMap.get(colId) || 0;
+    const directChildren = collections.filter(c => c.parentId === colId);
+    for (const child of directChildren) {
+      count += getTotalItemsCount(child._id);
+    }
+    return count;
+  };
+
   const filteredCollections = useMemo(() => {
-    if (!search.trim()) return collections;
+    if (!search.trim()) {
+      return collections.filter((c) => !c.parentId);
+    }
     const q = search.toLowerCase();
     return collections.filter((c) => c.title.toLowerCase().includes(q));
   }, [collections, search]);
+
+  const rootFolderCount = useMemo(() => {
+    return collections.filter((c) => !c.parentId).length;
+  }, [collections]);
 
   return (
     <div className="w-full flex flex-col gap-8 max-w-7xl mx-auto animate-in fade-in duration-200">
@@ -53,7 +69,7 @@ export function CollectionsHub({
               Collections
             </h1>
             <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-purple-500/15 text-purple-400 border border-purple-500/20">
-              {collections.length} {collections.length === 1 ? "folder" : "folders"}
+              {rootFolderCount} {rootFolderCount === 1 ? "folder" : "folders"}
             </span>
           </div>
           <p className="text-xs sm:text-sm text-gray-400 mt-1">
@@ -119,7 +135,6 @@ export function CollectionsHub({
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
           {filteredCollections.map((col) => {
-            const itemCount = countsMap.get(col._id) || 0;
             const isMenuOpen = activeMenuId === col._id;
 
             return (
@@ -142,9 +157,24 @@ export function CollectionsHub({
                       <h4 className={`font-bold text-sm sm:text-base truncate ${isDark ? "text-white group-hover:text-purple-300" : "text-gray-900 group-hover:text-purple-700"} transition-colors`} title={col.title}>
                         {col.title}
                       </h4>
-                      <span className="text-[11px] text-gray-400">
-                        {itemCount} {itemCount === 1 ? "memory" : "memories"}
-                      </span>
+                      <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+                        {(() => {
+                          const subCount = collections.filter(c => c.parentId === col._id).length;
+                          const totalFiles = getTotalItemsCount(col._id);
+                          return (
+                            <>
+                              {subCount > 0 && (
+                                <span className="text-[10px] font-semibold text-purple-400 bg-purple-500/10 px-1.5 py-0.5 rounded-md border border-purple-500/20">
+                                  {subCount} {subCount === 1 ? "folder" : "folders"}
+                                </span>
+                              )}
+                              <span className="text-[11px] text-gray-400">
+                                {totalFiles} {totalFiles === 1 ? "file" : "files"}
+                              </span>
+                            </>
+                          );
+                        })()}
+                      </div>
                     </div>
                   </div>
 

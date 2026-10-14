@@ -248,6 +248,33 @@ export function Dashboard() {
     return sourceContents;
   }, [sourceContents, activeTab, selectedCollection]);
 
+  // Multi-level ancestor breadcrumb trail for selected collection
+  const breadcrumbs = useMemo(() => {
+    if (!selectedCollection) return [];
+    const trail: Collection[] = [];
+    let curr: Collection | undefined = selectedCollection;
+    const visited = new Set<string>();
+    while (curr && !visited.has(curr._id)) {
+      visited.add(curr._id);
+      trail.unshift(curr);
+      curr = collections.find((c) => c._id === curr?.parentId);
+    }
+    return trail;
+  }, [selectedCollection, collections]);
+
+  // Direct child collections (subfolders) for current selected collection
+  const childSubfolders = useMemo(() => {
+    if (!selectedCollection) return [];
+    return collections.filter((c) => c.parentId === selectedCollection._id);
+  }, [selectedCollection, collections]);
+
+  const isItemPdf = (item: Content) => {
+    if (item.type === "pdf") return true;
+    const l = (item.link || "").toLowerCase();
+    const t = (item.title || "").toLowerCase();
+    return l.includes(".pdf") || l.includes("/pdf") || l.includes("arxiv.org/pdf") || l.includes("drive.google.com") || t.endsWith(".pdf");
+  };
+
   // Compute item counts for the filter dropdown options
   const filterCounts = useMemo<FilterCounts>(() => {
     const counts: FilterCounts = {
@@ -261,7 +288,7 @@ export function Dashboard() {
     activeBaseContents.forEach((item) => {
       if (item.type === "youtube" || item.type === "video") counts.video++;
       else if (item.type === "twitter") counts.twitter++;
-      else if (item.type === "pdf") counts.pdf++;
+      else if (isItemPdf(item)) counts.pdf++;
       else counts.article++;
 
       if (item.description && item.description.trim() !== "") counts.has_note++;
@@ -286,10 +313,10 @@ export function Dashboard() {
       return item.type === "twitter";
     }
     if (typeFilter === "pdf") {
-      return item.type === "pdf";
+      return isItemPdf(item);
     }
     if (typeFilter === "article") {
-      return item.type === "article" || (item.type !== "youtube" && item.type !== "video" && item.type !== "twitter" && item.type !== "pdf" && item.type !== "shared_brain");
+      return !isItemPdf(item) && (item.type === "article" || (item.type !== "youtube" && item.type !== "video" && item.type !== "twitter" && item.type !== "shared_brain"));
     }
     if (typeFilter === "has_note") {
       return Boolean(item.description && item.description.trim() !== "");
@@ -496,61 +523,133 @@ export function Dashboard() {
 
               {/* Collection Folder Header Breadcrumb */}
               {activeTab === "collections" && selectedCollection && (
-                <div className="flex items-center justify-between pb-5 border-b border-white/5 flex-wrap gap-4 select-none">
-                  <div className="flex items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setSelectedCollection(null)}
-                      className="px-3 py-1.5 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 hover:text-purple-300 border border-purple-500/20 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
-                    >
-                      <span>←</span>
-                      <span>All Collections</span>
-                    </button>
-                    <span className="text-gray-600">/</span>
-                    <div className="flex items-center gap-2">
-                      <span className="text-2xl p-1.5 rounded-xl bg-purple-500/10 border border-purple-500/20">
-                        {selectedCollection.icon || "📁"}
-                      </span>
-                      <h2 className={`text-xl sm:text-2xl font-extrabold tracking-tight ${isDark ? "text-white" : "text-gray-900"}`}>
-                        {selectedCollection.title}
-                      </h2>
-                      <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30">
-                        {filteredContents.length} items
-                      </span>
+                <div className="flex flex-col gap-4 pb-5 border-b border-white/5 select-none">
+                  {/* Top Bar: Breadcrumb + Action Buttons */}
+                  <div className="flex items-center justify-between flex-wrap gap-4">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedCollection(null)}
+                        className="px-2.5 py-1.5 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 hover:text-purple-300 border border-purple-500/20 text-xs font-bold transition-all cursor-pointer flex items-center gap-1"
+                      >
+                        <span>📁 All Collections</span>
+                      </button>
+
+                      {breadcrumbs.map((crumb) => {
+                        const isCurrent = crumb._id === selectedCollection._id;
+                        return (
+                          <div key={crumb._id} className="flex items-center gap-1.5">
+                            <span className="text-gray-500 text-xs">/</span>
+                            {isCurrent ? (
+                              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-500/15 border border-purple-500/25 text-xs font-bold text-white shadow-sm">
+                                <span>{crumb.icon || "📁"}</span>
+                                <span>{crumb.title}</span>
+                              </div>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => setSelectedCollection(crumb)}
+                                className="text-xs font-semibold text-gray-400 hover:text-purple-300 transition-colors cursor-pointer hover:underline px-1.5 py-1"
+                              >
+                                {crumb.title}
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    <div className="flex items-center gap-2.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSharingCollection(selectedCollection);
+                          setIsShareCollectionModalOpen(true);
+                        }}
+                        className="px-3 py-1.5 rounded-xl text-xs font-semibold border border-white/10 hover:bg-white/10 transition-all flex items-center gap-1.5 cursor-pointer text-gray-300"
+                      >
+                        <span>🔗</span>
+                        <span>{selectedCollection.shareHash ? "Shared" : "Share"}</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setModalOpen(true)}
+                        className="px-3.5 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold transition-all shadow-md active:scale-95 flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <span>+</span>
+                        <span>Add to Folder</span>
+                      </button>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2.5">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSharingCollection(selectedCollection);
-                        setIsShareCollectionModalOpen(true);
-                      }}
-                      className="px-3 py-1.5 rounded-xl text-xs font-semibold border border-white/10 hover:bg-white/10 transition-all flex items-center gap-1.5 cursor-pointer text-gray-300"
-                    >
-                      <span>🔗</span>
-                      <span>{selectedCollection.shareHash ? "Shared" : "Share"}</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setModalOpen(true)}
-                      className="px-3.5 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold transition-all shadow-md active:scale-95 flex items-center gap-1.5 cursor-pointer"
-                    >
-                      <span>+</span>
-                      <span>Add to Folder</span>
-                    </button>
-                  </div>
+                  {/* Subfolders Grid (Tree View) */}
+                  {childSubfolders.length > 0 && (
+                    <div className="flex flex-col gap-2.5 pt-2">
+                      <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-gray-400">
+                        <span>📁 Subfolders</span>
+                        <span className="px-2 py-0.5 rounded-full bg-purple-500/15 text-purple-400 text-[10px]">
+                          {childSubfolders.length}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                        {childSubfolders.map((sub) => {
+                          const directFiles = sourceContents.filter(item => item.collectionId === sub._id).length;
+                          const nestedFolders = collections.filter(c => c.parentId === sub._id).length;
+                          return (
+                            <div
+                              key={sub._id}
+                              onClick={() => setSelectedCollection(sub)}
+                              className={`p-3 rounded-2xl border transition-all duration-200 cursor-pointer flex items-center gap-2.5 group select-none shadow-sm ${
+                                isDark
+                                  ? "bg-[#18181b]/90 border-white/10 hover:border-purple-500/50 hover:bg-[#202024] hover:shadow-lg"
+                                  : "bg-white border-gray-200 hover:border-purple-400 hover:shadow-md"
+                              }`}
+                            >
+                              <div className="w-9 h-9 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-lg shrink-0 group-hover:scale-110 transition-transform">
+                                {sub.icon || "📁"}
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <h4 className={`text-xs font-bold truncate ${isDark ? "text-gray-200 group-hover:text-purple-300" : "text-gray-900 group-hover:text-purple-700"}`}>
+                                  {sub.title}
+                                </h4>
+                                <p className="text-[10px] text-gray-400 truncate mt-0.5">
+                                  {nestedFolders > 0 ? `${nestedFolders} folders • ` : ""}{directFiles} {directFiles === 1 ? "file" : "files"}
+                                </p>
+                              </div>
+                              <span className="text-gray-500 group-hover:text-purple-400 text-xs transition-colors shrink-0">
+                                →
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
+              {/* Feed of Memories inside this folder */}
               {filteredContents.length === 0 ? (
-                <EmptyState
-                  isSearch={searchQuery.trim() !== "" || typeFilter !== "all"}
-                  searchQuery={searchQuery}
-                  onAddClick={() => setModalOpen(true)}
-                  isDark={isDark}
-                />
+                childSubfolders.length > 0 ? (
+                  <div className="w-full py-12 flex flex-col items-center justify-center text-center p-6 rounded-3xl border border-dashed border-white/10 bg-white/[0.02]">
+                    <div className="w-12 h-12 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-2xl mb-3">
+                      📂
+                    </div>
+                    <p className="text-sm font-semibold text-gray-300">
+                      All files in this folder are organized into subfolders
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Click any subfolder above to view its documents and files
+                    </p>
+                  </div>
+                ) : (
+                  <EmptyState
+                    isSearch={searchQuery.trim() !== "" || typeFilter !== "all"}
+                    searchQuery={searchQuery}
+                    onAddClick={() => setModalOpen(true)}
+                    isDark={isDark}
+                  />
+                )
               ) : (
                 <div 
                   className="grid gap-6 items-start transition-all duration-300"
@@ -592,10 +691,14 @@ export function Dashboard() {
         onClose={() => setModalOpen(false)}
         collections={collections}
         defaultCollectionId={selectedCollection ? selectedCollection._id : null}
-        onSuccess={() => {
-          showToast("Memory saved successfully");
+        onSuccess={(msg?: string, importedCollection?: Collection) => {
+          showToast(msg || "Memory saved successfully");
           refresh();
           refreshCollections();
+          if (importedCollection) {
+            setSelectedCollection(importedCollection);
+            setActiveTab("collections");
+          }
         }}
       />
 

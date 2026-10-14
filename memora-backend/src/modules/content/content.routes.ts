@@ -7,6 +7,7 @@ import {
     fetchContent, 
     fetchMetadata, 
     fetchSharedContent, 
+    importDriveFolder,
     saveSharedBrainContent, 
     shareContent, 
     updateContent 
@@ -22,6 +23,7 @@ router.get("/preview/metadata",authMiddleware,fetchMetadata);
 router.delete("/:contentId",authMiddleware,deleteContent);
 router.post("/share",authMiddleware,shareContent);
 router.post("/save-brain/:shareLink",authMiddleware,saveSharedBrainContent);
+router.post("/import/drive-folder",authMiddleware,importDriveFolder);
 router.get("/:shareLink",fetchSharedContent);
 
 export default router;

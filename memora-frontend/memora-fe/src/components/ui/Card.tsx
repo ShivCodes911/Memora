@@ -307,8 +307,15 @@ export const Card = ({
     };
 
     const normalizedLink = link.startsWith("http://") || link.startsWith("https://") ? link : `https://${link}`;
-    const isSharedBrain = type === "shared_brain";
-    const isArticle = type !== "youtube" && type !== "twitter" && type !== "pdf" && type !== "shared_brain" && type !== "video";
+    const isLinkPdf = (link || "").toLowerCase().includes(".pdf") || 
+                      (link || "").toLowerCase().includes("/pdf") || 
+                      (link || "").toLowerCase().includes("arxiv.org/pdf") || 
+                      (link || "").toLowerCase().includes("drive.google.com") || 
+                      (title || "").toLowerCase().endsWith(".pdf") || 
+                      metadata?.description === "PDF Document";
+    const effectiveType = (type === "pdf" || (type === "article" && isLinkPdf)) ? "pdf" : type;
+    const isSharedBrain = effectiveType === "shared_brain";
+    const isArticle = effectiveType !== "youtube" && effectiveType !== "twitter" && effectiveType !== "pdf" && effectiveType !== "shared_brain" && effectiveType !== "video";
     const hasImage = isArticle && metadata?.image && !imgError;
     const domainName = metadata?.domain || (() => { try { return new URL(normalizedLink).hostname; } catch { return ""; } })();
     const ytVideoId = getYouTubeVideoId(link);
@@ -562,13 +569,13 @@ export const Card = ({
             }`}>
                 <div className="flex items-center gap-2.5 min-w-0">
                     <div className={`p-2 rounded-xl shrink-0 ${
-                        (type === "youtube" || type === "video") ? (isDark ? "bg-emerald-500/15 text-emerald-400" : "bg-emerald-50 text-emerald-500") :
-                        type === "twitter" ? (isDark ? "bg-white/[0.08] text-white" : "bg-neutral-100 text-neutral-900") : 
-                        type === "pdf" ? (isDark ? "bg-red-500/20 text-red-400" : "bg-red-50 text-red-600") :
+                        (effectiveType === "youtube" || effectiveType === "video") ? (isDark ? "bg-emerald-500/15 text-emerald-400" : "bg-emerald-50 text-emerald-500") :
+                        effectiveType === "twitter" ? (isDark ? "bg-white/[0.08] text-white" : "bg-neutral-100 text-neutral-900") : 
+                        effectiveType === "pdf" ? (isDark ? "bg-red-500/20 text-red-400" : "bg-red-50 text-red-600") :
                         isSharedBrain ? (isDark ? "bg-emerald-500/15 text-emerald-400" : "bg-emerald-50 text-emerald-600") :
                         (isDark ? "bg-purple-500/15 text-purple-400" : "bg-purple-50 text-purple-600")
                     }`}>
-                        {(type === "youtube" || type === "video") && (
+                        {(effectiveType === "youtube" || effectiveType === "video") && (
                             <img
                                 width="24"
                                 height="24"
@@ -579,7 +586,7 @@ export const Card = ({
                                 }`}
                             />
                         )}
-                        {type === "twitter" && (
+                        {effectiveType === "twitter" && (
                             <img
                                 width="50"
                                 height="50"
@@ -590,7 +597,7 @@ export const Card = ({
                                 }`}
                             />
                         )}
-                        {type === "pdf" && (
+                        {effectiveType === "pdf" && (
                             <img
                                 src="https://img.icons8.com/fluency-systems-regular/48/pdf-2.png"
                                 alt="pdf-2"
@@ -625,7 +632,7 @@ export const Card = ({
                         </h3>
                         <div className="flex items-center gap-1.5 flex-wrap">
                             <span className={`text-[11px] font-semibold capitalize ${isDark ? "text-gray-400" : "text-gray-400"}`}>
-                                {isSharedBrain ? "Memora Vault" : (domainName || type)}
+                                {isSharedBrain ? "Memora Vault" : (domainName || effectiveType)}
                             </span>
                             {collectionId && collections && (() => {
                                 const matchedCol = collections.find(c => c._id === collectionId);
@@ -737,7 +744,7 @@ export const Card = ({
 
             {/* Card Content Body */}
             <div className="pt-2 flex flex-col flex-1 min-h-0 overflow-hidden">
-                {(type === "youtube" || type === "video") && (
+                {(effectiveType === "youtube" || effectiveType === "video") && (
                     <div className="flex flex-col gap-2 w-full flex-1 min-h-0 justify-between">
                         <div className="flex flex-col gap-2 min-h-0 flex-1">
                             {/* 1. Video Thumbnail / Preview (Adaptively expands when no note to eliminate empty space) */}
@@ -747,14 +754,14 @@ export const Card = ({
                                     descText ? "min-h-[85px] max-h-[105px]" : "min-h-[140px] max-h-[175px]"
                                 }`}
                             >
-                                {type === "youtube" && ytThumbnailUrl && !thumbError ? (
+                                {effectiveType === "youtube" && ytThumbnailUrl && !thumbError ? (
                                     <img
                                         src={ytThumbnailUrl}
                                         alt={title}
                                         className="w-full h-full object-cover transition-transform duration-300 group-hover/thumb:scale-105"
                                         onError={() => setThumbError(true)}
                                     />
-                                ) : type === "video" ? (
+                                ) : effectiveType === "video" ? (
                                     <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-emerald-950/40 via-[#18181b] to-black gap-1.5 p-2.5">
                                         <div className="p-2 rounded-xl bg-emerald-600/20 text-emerald-500 border border-emerald-500/20">
                                             <img
@@ -778,7 +785,7 @@ export const Card = ({
                                 
                                 {/* Play Button Overlay */}
                                 <div className="absolute inset-0 bg-black/20 group-hover/thumb:bg-black/50 transition-colors flex items-center justify-center">
-                                    <div className={`rounded-xl ${type === "video" ? "bg-emerald-600/90" : "bg-red-600/90"} text-white flex items-center justify-center shadow-lg transition-all duration-300 group-hover/thumb:scale-110 ${
+                                    <div className={`rounded-xl ${effectiveType === "video" ? "bg-emerald-600/90" : "bg-red-600/90"} text-white flex items-center justify-center shadow-lg transition-all duration-300 group-hover/thumb:scale-110 ${
                                         descText ? "w-8 h-8" : "w-10 h-10"
                                     }`}>
                                         <svg className={`${descText ? "w-3.5 h-3.5" : "w-4 h-4"} fill-current ml-0.5`} viewBox="0 0 24 24">
@@ -829,7 +836,7 @@ export const Card = ({
                     </div>
                 )}
 
-                {type === "twitter" && (
+                {effectiveType === "twitter" && (
                     <div className="flex flex-col gap-2 w-full flex-1 min-h-0 justify-between">
                         {/* Twitter Embed Container with hidden scrollbars and clean framing */}
                         <div className={`flex-1 min-h-0 overflow-y-auto overflow-x-hidden rounded-xl border flex justify-center [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden p-1 ${
@@ -884,7 +891,7 @@ export const Card = ({
                     </div>
                 )}
 
-                {type === "pdf" && (
+                {effectiveType === "pdf" && (
                     <div className="flex flex-col gap-2 h-full w-full flex-1 min-h-0 justify-between">
                         <div className={`flex-1 min-h-0 flex flex-col rounded-xl border overflow-hidden transition-colors ${
                             isDark 
