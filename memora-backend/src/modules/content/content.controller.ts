@@ -78,15 +78,15 @@ export const addContent=async(req:Request,res:Response)=>{
             message:"Content created SuccessFully",
             content
         });
-    } catch (error: any) {
-        console.error("Failed to add content:", error);
-        if (error.code === 11000) {
-            return res.status(400).json({
+    } catch (error) {
+        console.error("addContent content:", error);
+         if(error instanceof mongoose.mongo.MongoServerError && error.code===11000) {
+            return res.status(409).json({
                 message: "You have already saved this link to your vault."
             });
         }
         return res.status(500).json({
-            message: error.message || "Failed to create content"
+            message: "Failed to create content"
         });
     }
 };
@@ -233,26 +233,38 @@ export const deleteContent=async(req:Request,res:Response)=>{
         const userId=req.userId;
         const contentId=req.params.contentId;
 
-        if(!userId){
-            return res.status(400).json({
+        if(!userId ){
+            return res.status(401).json({
                 message:"Unauthorized"
             })
         };
 
-        const deletedContent= await contentModel.deleteOne({
+        if (!contentId || !mongoose.isValidObjectId(contentId)){
+            return res.status(400).json({
+                message:"Provide valid Content ID !!"
+            });
+        }
+
+        const result= await contentModel.deleteOne({
             _id:contentId,
             userId,
             
         });
 
+        if(result.deletedCount===0){
+            return res.status(404).json({
+                message:"content not found"
+            })
+        }
+
 
         return res.status(200).json({
             message:"Content Deleted Successfully",
-            deleteContent:deletedContent
         });
      } catch (error) {
+        console.error("deletedContent failed",error);
         return res.status(500).json({
-            message:`Internal Server Error${error}`
+            message:`Internal Server Error`
         })
         
     }
