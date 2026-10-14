@@ -5,6 +5,7 @@ import axios from "axios";
 import { BACKEND_URL } from "../config";
 import { Card } from "../components/ui/Card";
 import { Toast } from "../components/ui/Toast";
+import { CollectionIcon, DEFAULT_COLLECTION_ICON } from "../components/collections/CollectionIcon";
 
 interface SharedCollectionResponse {
   username: string;
@@ -127,8 +128,8 @@ export function SharedCollectionPage() {
     return (
       <div className="min-h-screen bg-[#09090b] flex items-center justify-center text-zinc-400 font-sans">
         <div className="flex flex-col items-center gap-3 animate-pulse">
-          <div className="w-12 h-12 rounded-2xl bg-purple-500/10 text-purple-400 flex items-center justify-center text-2xl shadow-inner">
-            📁
+          <div className="w-12 h-12 rounded-2xl bg-purple-500/10 text-purple-400 flex items-center justify-center p-2 shadow-inner">
+            <CollectionIcon icon={DEFAULT_COLLECTION_ICON} className="w-8 h-8" />
           </div>
           <span className="text-xs font-medium">Loading Shared Collection...</span>
         </div>
@@ -218,9 +219,9 @@ export function SharedCollectionPage() {
       {/* Navigation Header */}
       <header className="border-b border-zinc-800/80 bg-[#121214]/80 backdrop-blur-md sticky top-0 z-20 px-6 py-4 flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <span className="text-3xl p-2 rounded-2xl bg-purple-500/10 border border-purple-500/20">
-            {data.collection.icon || "📁"}
-          </span>
+          <div className="w-12 h-12 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center p-2 shrink-0">
+            <CollectionIcon icon={data.collection.icon} className="w-8 h-8" />
+          </div>
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">

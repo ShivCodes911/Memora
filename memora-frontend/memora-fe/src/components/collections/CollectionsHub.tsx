@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import type { Collection } from "../../types/collection";
 import type { Content } from "../../types/content";
+import { CollectionIcon, DEFAULT_COLLECTION_ICON } from "./CollectionIcon";
 
 interface CollectionsHubProps {
   collections: Collection[];
@@ -111,8 +112,8 @@ export function CollectionsHub({
       {/* Collections Grid or Empty State */}
       {filteredCollections.length === 0 ? (
         <div className="w-full py-16 flex flex-col items-center justify-center text-center">
-          <div className="w-20 h-20 rounded-3xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-4xl mb-4 shadow-inner">
-            📁
+          <div className="w-20 h-20 rounded-3xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center mb-4 shadow-inner">
+            <CollectionIcon icon={DEFAULT_COLLECTION_ICON} className="w-12 h-12" />
           </div>
           <h3 className={`text-lg font-bold mb-1 ${isDark ? "text-white" : "text-gray-900"}`}>
             {search ? "No collections found" : "No collections yet"}
@@ -150,9 +151,9 @@ export function CollectionsHub({
                 {/* Top Row: Icon + Menu */}
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-3 min-w-0">
-                    <span className="text-3xl p-2 rounded-2xl bg-purple-500/10 border border-purple-500/20 group-hover:scale-105 transition-transform duration-200 shrink-0">
-                      {col.icon || "📁"}
-                    </span>
+                    <div className="w-12 h-12 rounded-2xl bg-purple-500/10 border border-purple-500/20 group-hover:scale-105 transition-transform duration-200 shrink-0 flex items-center justify-center p-2">
+                      <CollectionIcon icon={col.icon} className="w-8 h-8" />
+                    </div>
                     <div className="min-w-0">
                       <h4 className={`font-bold text-sm sm:text-base truncate ${isDark ? "text-white group-hover:text-purple-300" : "text-gray-900 group-hover:text-purple-700"} transition-colors`} title={col.title}>
                         {col.title}

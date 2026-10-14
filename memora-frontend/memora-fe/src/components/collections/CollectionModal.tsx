@@ -1,5 +1,10 @@
 import { useEffect, useState } from "react";
 import type { Collection } from "../../types/collection";
+import {
+  CollectionIcon,
+  DEFAULT_COLLECTION_ICON,
+  PRESET_COLLECTION_ICONS,
+} from "./CollectionIcon";
 
 interface CollectionModalProps {
   open: boolean;
@@ -9,12 +14,6 @@ interface CollectionModalProps {
   isDark?: boolean;
 }
 
-const PRESET_EMOJIS = [
-  "📁", "🚀", "📚", "💡", "💻", "🧠",
-  "🎬", "🎧", "🎨", "🔬", "📌", "🌐",
-  "📝", "⚡", "🎯", "📊", "🛠️", "🎮",
-];
-
 export function CollectionModal({
   open,
   onClose,
@@ -23,7 +22,7 @@ export function CollectionModal({
   isDark = true,
 }: CollectionModalProps) {
   const [title, setTitle] = useState("");
-  const [icon, setIcon] = useState("📁");
+  const [icon, setIcon] = useState(DEFAULT_COLLECTION_ICON);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -31,10 +30,10 @@ export function CollectionModal({
     if (open) {
       if (initialCollection) {
         setTitle(initialCollection.title || "");
-        setIcon(initialCollection.icon || "📁");
+        setIcon(initialCollection.icon || DEFAULT_COLLECTION_ICON);
       } else {
         setTitle("");
-        setIcon("📁");
+        setIcon(DEFAULT_COLLECTION_ICON);
       }
       setError(null);
     }
@@ -74,9 +73,9 @@ export function CollectionModal({
         {/* Header */}
         <div className="flex items-center justify-between pb-4 border-b border-white/5">
           <div className="flex items-center gap-3">
-            <span className="text-2xl p-2 rounded-2xl bg-purple-500/10 border border-purple-500/20">
-              {icon}
-            </span>
+            <div className="w-12 h-12 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center shrink-0">
+              <CollectionIcon icon={icon} className="w-7 h-7" />
+            </div>
             <div>
               <h3 className="text-lg font-bold">
                 {initialCollection ? "Edit Collection" : "New Collection"}
@@ -121,26 +120,26 @@ export function CollectionModal({
             />
           </div>
 
-          {/* Icon / Emoji Selection */}
+          {/* Icon / Sticker Selection */}
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">
               Choose Icon
             </label>
-            <div className="grid grid-cols-6 gap-2 max-h-36 overflow-y-auto p-1">
-              {PRESET_EMOJIS.map((emoji) => (
+            <div className="grid grid-cols-6 gap-2 max-h-40 overflow-y-auto p-1 rounded-xl">
+              {PRESET_COLLECTION_ICONS.map((preset) => (
                 <button
-                  key={emoji}
+                  key={preset}
                   type="button"
-                  onClick={() => setIcon(emoji)}
-                  className={`h-10 rounded-xl text-lg flex items-center justify-center transition-all cursor-pointer ${
-                    icon === emoji
-                      ? "bg-purple-600 text-white ring-2 ring-purple-400 shadow-md scale-105"
+                  onClick={() => setIcon(preset)}
+                  className={`h-11 rounded-xl flex items-center justify-center p-1.5 transition-all cursor-pointer ${
+                    icon === preset
+                      ? "bg-purple-600/20 border-2 border-purple-500 ring-2 ring-purple-500/30 shadow-md scale-105"
                       : isDark
-                        ? "bg-white/5 hover:bg-white/10 hover:scale-105"
-                        : "bg-gray-100 hover:bg-gray-200 hover:scale-105"
+                        ? "bg-white/5 hover:bg-white/10 hover:scale-105 border border-transparent"
+                        : "bg-gray-100 hover:bg-gray-200 hover:scale-105 border border-transparent"
                   }`}
                 >
-                  {emoji}
+                  <CollectionIcon icon={preset} className="w-7 h-7" />
                 </button>
               ))}
             </div>

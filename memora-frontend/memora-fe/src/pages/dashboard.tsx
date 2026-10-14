@@ -9,6 +9,7 @@ import { CreateContentModal } from "../components/ui/createContentModel";
 import { CollectionsHub } from "../components/collections/CollectionsHub";
 import { CollectionModal } from "../components/collections/CollectionModal";
 import { ShareCollectionModal } from "../components/collections/ShareCollectionModal";
+import { CollectionIcon, DEFAULT_COLLECTION_ICON } from "../components/collections/CollectionIcon";
 import { EmptyState } from "../components/ui/EmptyState";
 import { Toast } from "../components/ui/Toast";
 import { useContent } from "../hooks/useContent";
@@ -530,9 +531,10 @@ export function Dashboard() {
                       <button
                         type="button"
                         onClick={() => setSelectedCollection(null)}
-                        className="px-2.5 py-1.5 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 hover:text-purple-300 border border-purple-500/20 text-xs font-bold transition-all cursor-pointer flex items-center gap-1"
+                        className="px-2.5 py-1.5 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 hover:text-purple-300 border border-purple-500/20 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
                       >
-                        <span>📁 All Collections</span>
+                        <CollectionIcon icon={DEFAULT_COLLECTION_ICON} className="w-3.5 h-3.5" />
+                        <span>All Collections</span>
                       </button>
 
                       {breadcrumbs.map((crumb) => {
@@ -542,7 +544,7 @@ export function Dashboard() {
                             <span className="text-gray-500 text-xs">/</span>
                             {isCurrent ? (
                               <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-500/15 border border-purple-500/25 text-xs font-bold text-white shadow-sm">
-                                <span>{crumb.icon || "📁"}</span>
+                                <CollectionIcon icon={crumb.icon} className="w-4 h-4" />
                                 <span>{crumb.title}</span>
                               </div>
                             ) : (
@@ -586,7 +588,10 @@ export function Dashboard() {
                   {childSubfolders.length > 0 && (
                     <div className="flex flex-col gap-2.5 pt-2">
                       <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-gray-400">
-                        <span>📁 Subfolders</span>
+                        <span className="flex items-center gap-1">
+                          <CollectionIcon icon={DEFAULT_COLLECTION_ICON} className="w-3.5 h-3.5" />
+                          Subfolders
+                        </span>
                         <span className="px-2 py-0.5 rounded-full bg-purple-500/15 text-purple-400 text-[10px]">
                           {childSubfolders.length}
                         </span>
@@ -605,8 +610,8 @@ export function Dashboard() {
                                   : "bg-white border-gray-200 hover:border-purple-400 hover:shadow-md"
                               }`}
                             >
-                              <div className="w-9 h-9 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-lg shrink-0 group-hover:scale-110 transition-transform">
-                                {sub.icon || "📁"}
+                              <div className="w-9 h-9 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform p-1.5">
+                                <CollectionIcon icon={sub.icon} className="w-6 h-6" />
                               </div>
                               <div className="min-w-0 flex-1">
                                 <h4 className={`text-xs font-bold truncate ${isDark ? "text-gray-200 group-hover:text-purple-300" : "text-gray-900 group-hover:text-purple-700"}`}>

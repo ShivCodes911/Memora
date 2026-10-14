@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { Collection } from "../../types/collection";
+import { CollectionIcon } from "./CollectionIcon";
 
 interface ShareCollectionModalProps {
   open: boolean;
@@ -62,9 +63,9 @@ export function ShareCollectionModal({
         {/* Header */}
         <div className="flex items-center justify-between pb-4 border-b border-white/5">
           <div className="flex items-center gap-3">
-            <span className="text-2xl p-2 rounded-2xl bg-purple-500/10 border border-purple-500/20">
-              {collection.icon || "📁"}
-            </span>
+            <div className="w-12 h-12 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center shrink-0">
+              <CollectionIcon icon={collection.icon} className="w-7 h-7" />
+            </div>
             <div>
               <h3 className="text-lg font-bold">Share Collection</h3>
               <p className="text-xs text-gray-400 truncate max-w-[240px]">
