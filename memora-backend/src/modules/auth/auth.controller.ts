@@ -28,7 +28,10 @@ export const signup=async(req:Request,res:Response)=>{
 
         return res.status(200).json({
             message:"User created Successfully",
-            user
+            user:{
+               id: user._id,
+               username:user.username
+            }
         });
     
     } catch (error) {
@@ -51,16 +54,16 @@ export const signin=async(req:Request,res:Response)=>{
         
 
         if(!existingUser){
-            return res.status(404).json({
-                message:"User not found"
+            return res.status(401).json({
+                message:"username or password is invalid"
             })
         };
 
         const matchedPassword=await bcrypt.compare(password,existingUser.password);
 
         if(!matchedPassword){
-            return res.status(403).json({
-                message:"invalid password"
+            return res.status(401).json({
+                message:"username or password is invalid"
             })
         }
 
