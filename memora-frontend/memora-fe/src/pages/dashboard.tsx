@@ -1,13 +1,19 @@
 import { useEffect, useState, useRef, useMemo } from "react";
 import type { Content } from "../types/content";
+import type { Collection } from "../types/collection";
 import { TopBar, type FilterCounts } from "../components/ui/TopBar";
 import { Sidebar, type NavItemConfig } from "../components/ui/Sidebar";
 import { SidebarPreview } from "../components/ui/SidebarPreview";
 import { Card } from "../components/ui/Card";
 import { CreateContentModal } from "../components/ui/createContentModel";
+import { CollectionsHub } from "../components/collections/CollectionsHub";
+import { CollectionModal } from "../components/collections/CollectionModal";
+import { ShareCollectionModal } from "../components/collections/ShareCollectionModal";
+import { CollectionIcon, DEFAULT_COLLECTION_ICON } from "../components/collections/CollectionIcon";
 import { EmptyState } from "../components/ui/EmptyState";
 import { Toast } from "../components/ui/Toast";
 import { useContent } from "../hooks/useContent";
+import { useCollections } from "../hooks/useCollections";
 import axios from "axios";
 import { BACKEND_URL } from "../config";
 
@@ -23,6 +29,22 @@ export function Dashboard() {
   const [sharedWorkspaceData, setSharedWorkspaceData] = useState<{ username: string; content: Content[] } | null>(null);
   const [sharedWorkspaceLoading, setSharedWorkspaceLoading] = useState(false);
   const [sharedWorkspaceError, setSharedWorkspaceError] = useState<string | null>(null);
+
+  // Collections State
+  const {
+    collections,
+    refreshCollections,
+    createCollection,
+    updateCollection,
+    deleteCollection,
+    shareCollection,
+  } = useCollections();
+
+  const [selectedCollection, setSelectedCollection] = useState<Collection | null>(null);
+  const [isCollectionModalOpen, setIsCollectionModalOpen] = useState(false);
+  const [editingCollection, setEditingCollection] = useState<Collection | null>(null);
+  const [isShareCollectionModalOpen, setIsShareCollectionModalOpen] = useState(false);
+  const [sharingCollection, setSharingCollection] = useState<Collection | null>(null);
 
   const [isDark, setIsDark] = useState(() => {
     const saved = localStorage.getItem("theme");
@@ -129,12 +151,31 @@ export function Dashboard() {
     }
   }
 
+  async function handleMoveCollection(contentId: string, collectionId: string | null) {
+    try {
+      await axios.put(
+        `${BACKEND_URL}/api/v1/content/${contentId}`,
+        { collectionId },
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
+      refresh();
+      refreshCollections();
+      showToast(collectionId ? "Moved to collection 📁" : "Removed from collection");
+    } catch (err: any) {
+      showToast(err?.response?.data?.message || "Failed to move memory");
+    }
+  }
+
   // Navigation Items Config
   const NAV_ITEMS: NavItemConfig[] = [
     {
       id: "home",
       label: "Home",
-      count: contents.length,
+      count: contents.filter((item) => item.type !== "shared_brain").length,
       icon: (
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
@@ -142,18 +183,9 @@ export function Dashboard() {
       ),
     },
     {
-      id: "content",
-      label: "My Content",
-      count: contents.length,
-      icon: (
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-        </svg>
-      ),
-    },
-    {
       id: "collections",
       label: "Collections",
+      count: collections.filter((c) => !c.parentId).length,
       icon: (
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
@@ -192,35 +224,81 @@ export function Dashboard() {
 
   const [typeFilter, setTypeFilter] = useState<string>("all");
 
-  const sharedBrains = contents.filter((item) => item.type === "shared_brain");
+  const sharedBrains = useMemo(() => {
+    const raw = contents.filter((item) => item.type === "shared_brain");
+    const seen = new Set<string>();
+    return raw.filter((item) => {
+      const hash = item.link?.split("/share/")[1] || item.title;
+      if (!hash || seen.has(hash)) return false;
+      seen.add(hash);
+      return true;
+    });
+  }, [contents]);
 
-  const sourceContents = currentWorkspace === "personal" 
-    ? contents.filter((item) => item.type !== "shared_brain") 
-    : (sharedWorkspaceData?.content || []);
+  const sourceContents = useMemo(() => {
+    const raw = currentWorkspace === "personal" 
+      ? contents 
+      : (sharedWorkspaceData?.content || []);
+    return raw.filter((item) => item.type !== "shared_brain");
+  }, [currentWorkspace, contents, sharedWorkspaceData]);
+
+  const activeBaseContents = useMemo(() => {
+    if (activeTab === "collections" && selectedCollection) {
+      return sourceContents.filter((item) => item.collectionId === selectedCollection._id);
+    }
+    return sourceContents;
+  }, [sourceContents, activeTab, selectedCollection]);
+
+  // Multi-level ancestor breadcrumb trail for selected collection
+  const breadcrumbs = useMemo(() => {
+    if (!selectedCollection) return [];
+    const trail: Collection[] = [];
+    let curr: Collection | undefined = selectedCollection;
+    const visited = new Set<string>();
+    while (curr && !visited.has(curr._id)) {
+      visited.add(curr._id);
+      trail.unshift(curr);
+      curr = collections.find((c) => c._id === curr?.parentId);
+    }
+    return trail;
+  }, [selectedCollection, collections]);
+
+  // Direct child collections (subfolders) for current selected collection
+  const childSubfolders = useMemo(() => {
+    if (!selectedCollection) return [];
+    return collections.filter((c) => c.parentId === selectedCollection._id);
+  }, [selectedCollection, collections]);
+
+  const isItemPdf = (item: Content) => {
+    if (item.type === "pdf") return true;
+    const l = (item.link || "").toLowerCase();
+    const t = (item.title || "").toLowerCase();
+    return l.includes(".pdf") || l.includes("/pdf") || l.includes("arxiv.org/pdf") || l.includes("drive.google.com") || t.endsWith(".pdf");
+  };
 
   // Compute item counts for the filter dropdown options
   const filterCounts = useMemo<FilterCounts>(() => {
     const counts: FilterCounts = {
-      all: sourceContents.length,
+      all: activeBaseContents.length,
       video: 0,
       twitter: 0,
       pdf: 0,
       article: 0,
       has_note: 0,
     };
-    sourceContents.forEach((item) => {
+    activeBaseContents.forEach((item) => {
       if (item.type === "youtube" || item.type === "video") counts.video++;
       else if (item.type === "twitter") counts.twitter++;
-      else if (item.type === "pdf") counts.pdf++;
+      else if (isItemPdf(item)) counts.pdf++;
       else counts.article++;
 
       if (item.description && item.description.trim() !== "") counts.has_note++;
     });
     return counts;
-  }, [sourceContents]);
+  }, [activeBaseContents]);
 
   // Filtering content by search query and selected filter option
-  const filteredContents = sourceContents.filter((item) => {
+  const filteredContents = activeBaseContents.filter((item) => {
     // 1. Search Query Filter
     if (searchQuery.trim() !== "") {
       const q = searchQuery.toLowerCase();
@@ -236,10 +314,10 @@ export function Dashboard() {
       return item.type === "twitter";
     }
     if (typeFilter === "pdf") {
-      return item.type === "pdf";
+      return isItemPdf(item);
     }
     if (typeFilter === "article") {
-      return item.type === "article" || (item.type !== "youtube" && item.type !== "video" && item.type !== "twitter" && item.type !== "pdf");
+      return !isItemPdf(item) && (item.type === "article" || (item.type !== "youtube" && item.type !== "video" && item.type !== "twitter" && item.type !== "shared_brain"));
     }
     if (typeFilter === "has_note") {
       return Boolean(item.description && item.description.trim() !== "");
@@ -295,13 +373,24 @@ export function Dashboard() {
         open={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
         activeTab={activeTab}
-        onSelectTab={(tabId) => setActiveTab(tabId)}
+        onSelectTab={(tabId) => {
+          setActiveTab(tabId);
+          if (tabId === "collections") {
+            setSelectedCollection(null);
+          }
+        }}
         items={NAV_ITEMS}
         isDark={isDark}
         onToggleTheme={toggleTheme}
         currentWorkspace={currentWorkspace}
         onWorkspaceSelect={setCurrentWorkspace}
         sharedBrains={sharedBrains}
+        onDeleteBrain={(brainId) => {
+          handleDelete(brainId);
+          if (currentWorkspace !== "personal") {
+            setCurrentWorkspace("personal");
+          }
+        }}
       />
 
       {/* ── Hover Navigation Preview (Floats without pushing content) ── */}
@@ -370,37 +459,231 @@ export function Dashboard() {
                 {sharedWorkspaceLoading ? "Syncing external brain..." : "Loading workspace..."}
               </div>
             </div>
-          ) : filteredContents.length === 0 ? (
-            <EmptyState
-              isSearch={searchQuery.trim() !== "" || typeFilter !== "all"}
-              searchQuery={searchQuery}
-              onAddClick={() => setModalOpen(true)}
+          ) : activeTab === "collections" && !selectedCollection && currentWorkspace === "personal" ? (
+            /* Collections Hub Overview */
+            <CollectionsHub
+              collections={collections}
+              contents={contents}
+              onSelectCollection={(col) => setSelectedCollection(col)}
+              onCreateCollectionClick={() => {
+                setEditingCollection(null);
+                setIsCollectionModalOpen(true);
+              }}
+              onEditCollection={(col) => {
+                setEditingCollection(col);
+                setIsCollectionModalOpen(true);
+              }}
+              onDeleteCollection={async (col) => {
+                if (window.confirm(`Delete collection "${col.title}"? Any saved items will remain safely in your General Vault.`)) {
+                  await deleteCollection(col._id);
+                  refresh();
+                  refreshCollections();
+                  showToast("Collection deleted");
+                }
+              }}
+              onShareCollection={(col) => {
+                setSharingCollection(col);
+                setIsShareCollectionModalOpen(true);
+              }}
               isDark={isDark}
             />
           ) : (
-            <div 
-              className="grid gap-6 items-start transition-all duration-300"
-              style={{
-                gridTemplateColumns: `repeat(${numCols}, minmax(0, 1fr))`
-              }}
-            >
-              {columns.map((colItems, colIdx) => (
-                <div key={colIdx} className="flex flex-col gap-6">
-                  {colItems.map(({ _id, type, link, title, description }) => (
-                    <Card
-                      key={_id}
-                      _id={_id}
-                      type={type}
-                      link={link}
-                      title={title}
-                      description={description}
-                      onDelete={handleDelete}
-                      onCopyToast={showToast}
-                      isDark={isDark}
-                    />
+            /* Normal Card Feed (Home or Inside Collection Folder or Shared Brain) */
+            <div className="w-full flex flex-col gap-6">
+              {/* External Shared Workspace Banner */}
+              {currentWorkspace !== "personal" && sharedWorkspaceData && (
+                <div className={`p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 border ${
+                  isDark ? "bg-purple-950/25 border-purple-500/20 text-white" : "bg-purple-50 border-purple-200 text-purple-950"
+                }`}>
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 rounded-xl bg-purple-500/20 border border-purple-500/30 flex items-center justify-center shrink-0">
+                      <img 
+                        width="64" 
+                        height="64" 
+                        src="https://img.icons8.com/pastel-glyph/64/brain-3--v1.png" 
+                        alt="brain-3--v1" 
+                        className={`w-6 h-6 object-contain ${isDark ? "invert brightness-125" : "brightness-0 opacity-80"}`}
+                      />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h2 className="text-base font-bold">
+                          {sharedWorkspaceData.username}'s Brain
+                        </h2>
+                        <span className="text-[11px] px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 font-bold border border-purple-500/30">
+                          {filteredContents.length} {filteredContents.length === 1 ? "memory" : "memories"}
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-400 mt-0.5">
+                        Shared workspace connection curated by @{sharedWorkspaceData.username}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Collection Folder Header Breadcrumb */}
+              {activeTab === "collections" && selectedCollection && (
+                <div className="flex flex-col gap-4 pb-5 border-b border-white/5 select-none">
+                  {/* Top Bar: Breadcrumb + Action Buttons */}
+                  <div className="flex items-center justify-between flex-wrap gap-4">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedCollection(null)}
+                        className="px-2.5 py-1.5 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 hover:text-purple-300 border border-purple-500/20 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
+                      >
+                        <CollectionIcon icon={DEFAULT_COLLECTION_ICON} className="w-3.5 h-3.5" />
+                        <span>All Collections</span>
+                      </button>
+
+                      {breadcrumbs.map((crumb) => {
+                        const isCurrent = crumb._id === selectedCollection._id;
+                        return (
+                          <div key={crumb._id} className="flex items-center gap-1.5">
+                            <span className="text-gray-500 text-xs">/</span>
+                            {isCurrent ? (
+                              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-500/15 border border-purple-500/25 text-xs font-bold text-white shadow-sm">
+                                <CollectionIcon icon={crumb.icon} className="w-4 h-4" />
+                                <span>{crumb.title}</span>
+                              </div>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => setSelectedCollection(crumb)}
+                                className="text-xs font-semibold text-gray-400 hover:text-purple-300 transition-colors cursor-pointer hover:underline px-1.5 py-1"
+                              >
+                                {crumb.title}
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    <div className="flex items-center gap-2.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSharingCollection(selectedCollection);
+                          setIsShareCollectionModalOpen(true);
+                        }}
+                        className="px-3 py-1.5 rounded-xl text-xs font-semibold border border-white/10 hover:bg-white/10 transition-all flex items-center gap-1.5 cursor-pointer text-gray-300"
+                      >
+                        <span>🔗</span>
+                        <span>{selectedCollection.shareHash ? "Shared" : "Share"}</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setModalOpen(true)}
+                        className="px-3.5 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold transition-all shadow-md active:scale-95 flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <span>+</span>
+                        <span>Add to Folder</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Subfolders Grid (Tree View) */}
+                  {childSubfolders.length > 0 && (
+                    <div className="flex flex-col gap-2.5 pt-2">
+                      <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-gray-400">
+                        <span className="flex items-center gap-1">
+                          <CollectionIcon icon={DEFAULT_COLLECTION_ICON} className="w-3.5 h-3.5" />
+                          Subfolders
+                        </span>
+                        <span className="px-2 py-0.5 rounded-full bg-purple-500/15 text-purple-400 text-[10px]">
+                          {childSubfolders.length}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                        {childSubfolders.map((sub) => {
+                          const directFiles = sourceContents.filter(item => item.collectionId === sub._id).length;
+                          const nestedFolders = collections.filter(c => c.parentId === sub._id).length;
+                          return (
+                            <div
+                              key={sub._id}
+                              onClick={() => setSelectedCollection(sub)}
+                              className={`p-3 rounded-2xl border transition-all duration-200 cursor-pointer flex items-center gap-2.5 group select-none shadow-sm ${
+                                isDark
+                                  ? "bg-[#18181b]/90 border-white/10 hover:border-purple-500/50 hover:bg-[#202024] hover:shadow-lg"
+                                  : "bg-white border-gray-200 hover:border-purple-400 hover:shadow-md"
+                              }`}
+                            >
+                              <div className="w-9 h-9 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform p-1.5">
+                                <CollectionIcon icon={sub.icon} className="w-6 h-6" />
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <h4 className={`text-xs font-bold truncate ${isDark ? "text-gray-200 group-hover:text-purple-300" : "text-gray-900 group-hover:text-purple-700"}`}>
+                                  {sub.title}
+                                </h4>
+                                <p className="text-[10px] text-gray-400 truncate mt-0.5">
+                                  {nestedFolders > 0 ? `${nestedFolders} folders • ` : ""}{directFiles} {directFiles === 1 ? "file" : "files"}
+                                </p>
+                              </div>
+                              <span className="text-gray-500 group-hover:text-purple-400 text-xs transition-colors shrink-0">
+                                →
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Feed of Memories inside this folder */}
+              {filteredContents.length === 0 ? (
+                childSubfolders.length > 0 ? (
+                  <div className="w-full py-12 flex flex-col items-center justify-center text-center p-6 rounded-3xl border border-dashed border-white/10 bg-white/[0.02]">
+                    <div className="w-12 h-12 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-2xl mb-3">
+                      📂
+                    </div>
+                    <p className="text-sm font-semibold text-gray-300">
+                      All files in this folder are organized into subfolders
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Click any subfolder above to view its documents and files
+                    </p>
+                  </div>
+                ) : (
+                  <EmptyState
+                    isSearch={searchQuery.trim() !== "" || typeFilter !== "all"}
+                    searchQuery={searchQuery}
+                    onAddClick={() => setModalOpen(true)}
+                    isDark={isDark}
+                  />
+                )
+              ) : (
+                <div 
+                  className="grid gap-6 items-start transition-all duration-300"
+                  style={{
+                    gridTemplateColumns: `repeat(${numCols}, minmax(0, 1fr))`
+                  }}
+                >
+                  {columns.map((colItems, colIdx) => (
+                    <div key={colIdx} className="flex flex-col gap-6">
+                      {colItems.map(({ _id, type, link, title, description, collectionId }) => (
+                        <Card
+                          key={_id}
+                          _id={_id}
+                          type={type}
+                          link={link}
+                          title={title}
+                          description={description}
+                          collectionId={collectionId}
+                          collections={collections}
+                          onMoveCollection={handleMoveCollection}
+                          onDelete={handleDelete}
+                          onCopyToast={showToast}
+                          isDark={isDark}
+                        />
+                      ))}
+                    </div>
                   ))}
                 </div>
-              ))}
+              )}
             </div>
           )}
         </main>
@@ -411,10 +694,57 @@ export function Dashboard() {
       <CreateContentModal
         open={modalOpen}
         onClose={() => setModalOpen(false)}
-        onSuccess={() => {
-          showToast("Memory saved successfully");
+        collections={collections}
+        defaultCollectionId={selectedCollection ? selectedCollection._id : null}
+        onSuccess={(msg?: string, importedCollection?: Collection) => {
+          showToast(msg || "Memory saved successfully");
           refresh();
+          refreshCollections();
+          if (importedCollection) {
+            setSelectedCollection(importedCollection);
+            setActiveTab("collections");
+          }
         }}
+      />
+
+      <CollectionModal
+        open={isCollectionModalOpen}
+        onClose={() => {
+          setIsCollectionModalOpen(false);
+          setEditingCollection(null);
+        }}
+        initialCollection={editingCollection}
+        onSave={async (title, icon) => {
+          if (editingCollection) {
+            await updateCollection(editingCollection._id, title, icon);
+            showToast("Collection updated 📁");
+          } else {
+            await createCollection(title, icon);
+            showToast("Collection created 🎉");
+          }
+        }}
+        isDark={isDark}
+      />
+
+      <ShareCollectionModal
+        open={isShareCollectionModalOpen}
+        onClose={() => {
+          setIsShareCollectionModalOpen(false);
+          setSharingCollection(null);
+        }}
+        collection={sharingCollection}
+        onToggleShare={async (id, share) => {
+          const link = await shareCollection(id, share);
+          if (sharingCollection) {
+            setSharingCollection({
+              ...sharingCollection,
+              shareHash: link ? link.split("/share/c/")[1] : undefined,
+            });
+          }
+          return link;
+        }}
+        onCopyToast={showToast}
+        isDark={isDark}
       />
 
       <Toast message={toastMessage} onClose={() => setToastMessage(null)} />

@@ -233,7 +233,7 @@ export function TopBar({
 
                 {FILTER_OPTIONS.map((opt) => {
                   const isSelected = activeFilter === opt.id;
-                  const count = filterCounts ? (filterCounts as Record<string, number>)[opt.id] : undefined;
+                  const count = filterCounts ? (filterCounts as unknown as Record<string, number>)[opt.id] : undefined;
                   return (
                     <button
                       key={opt.id}

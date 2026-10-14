@@ -18,6 +18,8 @@ export function SharedPage() {
     const [activeTab, setActiveTab] = useState<string>("all");
     const [searchQuery, setSearchQuery] = useState<string>("");
     const [toastMessage, setToastMessage] = useState<string | null>(null);
+    const [isSaving, setIsSaving] = useState(false);
+    const [isSaved, setIsSaved] = useState(false);
 
     // Responsive Column Distribution (Serial Order Across Independent Columns)
     const [numCols, setNumCols] = useState(1);
@@ -56,10 +58,8 @@ export function SharedPage() {
         return (
             <div className="min-h-screen bg-[#09090b] flex items-center justify-center text-zinc-400 font-sans">
                 <div className="flex flex-col items-center gap-3 animate-pulse">
-                    <div className="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-400 flex items-center justify-center">
-                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                        </svg>
+                    <div className="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-400 flex items-center justify-center p-2">
+                        <img width="64" height="64" src="https://img.icons8.com/pastel-glyph/64/brain-3--v1.png" alt="brain-3--v1" className="w-6 h-6 object-contain invert brightness-125" />
                     </div>
                     <span className="text-xs font-medium">Loading Memora Brain Vault...</span>
                 </div>
@@ -81,16 +81,18 @@ export function SharedPage() {
         );
     }
 
-    const youtubeCount = data.content.filter((c) => c.type === "youtube").length;
-    const twitterCount = data.content.filter((c) => c.type === "twitter").length;
-    const pdfCount = data.content.filter((c) => c.type === "pdf").length;
-    const articleCount = data.content.filter((c) => c.type !== "youtube" && c.type !== "twitter" && c.type !== "pdf").length;
+    const rawContents = data?.content || [];
+    const contents = rawContents.filter((c) => c.type !== "shared_brain");
+    const youtubeCount = contents.filter((c) => c.type === "youtube" || c.type === "video").length;
+    const twitterCount = contents.filter((c) => c.type === "twitter").length;
+    const pdfCount = contents.filter((c) => c.type === "pdf").length;
+    const articleCount = contents.filter((c) => c.type !== "youtube" && c.type !== "video" && c.type !== "twitter" && c.type !== "pdf" && c.type !== "shared_brain").length;
 
-    const filteredContents = data.content.filter((item) => {
-        if (activeTab === "youtube" && item.type !== "youtube") return false;
+    const filteredContents = contents.filter((item) => {
+        if (activeTab === "youtube" && item.type !== "youtube" && item.type !== "video") return false;
         if (activeTab === "twitter" && item.type !== "twitter") return false;
         if (activeTab === "pdf" && item.type !== "pdf") return false;
-        if (activeTab === "article" && (item.type === "youtube" || item.type === "twitter" || item.type === "pdf")) return false;
+        if (activeTab === "article" && (item.type === "youtube" || item.type === "video" || item.type === "twitter" || item.type === "pdf")) return false;
 
         if (searchQuery.trim() !== "") {
             const q = searchQuery.toLowerCase();
@@ -107,28 +109,27 @@ export function SharedPage() {
     const saveSharedBrain = async () => {
         const token = localStorage.getItem("token");
         if (!token) {
-            window.location.href = "/signin";
+            window.location.href = `/signin?redirect=${encodeURIComponent(window.location.pathname)}`;
             return;
         }
         
         try {
-            await axios.post(
-                `${BACKEND_URL}/api/v1/content`,
-                { 
-                    link: `${window.location.origin}/share/${shareLink}`,
-                    type: "shared_brain",
-                    title: `${data?.username}'s Brain`,
-                    description: `Public Knowledge Collection shared by ${data?.username}`
-                },
+            setIsSaving(true);
+            const res = await axios.post(
+                `${BACKEND_URL}/api/v1/content/save-brain/${shareLink}`,
+                {},
                 {
                     headers: {
                         Authorization: `Bearer ${token}`
                     }
                 }
             );
-            showToast("Brain saved to your Shared tab!");
+            setIsSaved(true);
+            showToast(res.data?.message || "Brain saved to your vault! 🎉");
         } catch (err: any) {
-            showToast(err?.response?.data?.message || "Brain might already be saved!");
+            showToast(err?.response?.data?.message || "Failed to save brain!");
+        } finally {
+            setIsSaving(false);
         }
     };
 
@@ -157,21 +158,32 @@ export function SharedPage() {
                         Copy Link
                     </button>
                     {isLoggedIn ? (
-                        <button
-                            onClick={saveSharedBrain}
-                            className="px-3 py-1 rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-medium transition-colors text-xs cursor-pointer flex items-center gap-1.5"
-                        >
-                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-                            </svg>
-                            Save to My Shared
-                        </button>
+                        isSaved ? (
+                            <Link
+                                to="/dashboard"
+                                className="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-medium transition-colors text-xs flex items-center gap-1.5"
+                            >
+                                <span>✓ Saved in Vault</span>
+                                <span className="opacity-80">(View) →</span>
+                            </Link>
+                        ) : (
+                            <button
+                                onClick={saveSharedBrain}
+                                disabled={isSaving}
+                                className="px-3 py-1 rounded-lg bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white font-medium transition-colors text-xs cursor-pointer flex items-center gap-1.5 shadow"
+                            >
+                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                                </svg>
+                                {isSaving ? "Saving Brain..." : "Save to My Vault"}
+                            </button>
+                        )
                     ) : (
                         <Link
-                            to="/signup"
+                            to={`/signin?redirect=${encodeURIComponent(window.location.pathname)}`}
                             className="px-3 py-1 rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-medium transition-colors text-xs"
                         >
-                            Create Your Brain →
+                            Save Brain to Vault →
                         </Link>
                     )}
                 </div>
@@ -183,10 +195,8 @@ export function SharedPage() {
                 <div className="pb-8 border-b border-zinc-800 flex flex-col md:flex-row md:items-center justify-between gap-6">
                     <div>
                         <div className="flex items-center gap-3.5 mb-2">
-                            <div className="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/20 flex items-center justify-center">
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                                </svg>
+                            <div className="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/20 flex items-center justify-center p-2">
+                                <img width="64" height="64" src="https://img.icons8.com/pastel-glyph/64/brain-3--v1.png" alt="brain-3--v1" className="w-6 h-6 object-contain invert brightness-125" />
                             </div>
                             <div>
                                 <h1 className="text-2xl font-bold text-white tracking-tight">{data.username}'s Brain</h1>
@@ -280,7 +290,6 @@ export function SharedPage() {
                                         link={link}
                                         title={title}
                                         description={description}
-                                        onDelete={() => {}}
                                         onCopyToast={showToast}
                                         isDark={true}
                                     />

@@ -1,8 +1,8 @@
 import { useEffect, useState, useRef } from "react";
+import { createPortal } from "react-dom";
 import { ShareIcon } from "../../icons/shareIcon";
 import { Delete } from "../../icons/delete";
 import { YoutubeIcon } from "../../icons/youtube";
-import { TwitterIcon } from "../../icons/twitter";
 import { PdfIcon } from "../../icons/pdfIcon";
 import type { ContentType } from "../../types/content";
 import axios from "axios";
@@ -18,13 +18,18 @@ declare global {
   }
 }
 
+import type { Collection } from "../../types/collection";
+
 interface CardProps {
     _id: string;
     title: string;
     link: string;
     type: ContentType;
     description?: string;
-    onDelete: (id: string) => void;
+    collectionId?: string | null;
+    collections?: Collection[];
+    onMoveCollection?: (contentId: string, collectionId: string | null) => void;
+    onDelete?: (id: string) => void;
     onCopyToast?: (msg: string) => void;
     isDark?: boolean;
 }
@@ -87,10 +92,23 @@ function getPdfViewerUrl(link: string) {
   }
 }
 
-export const Card = ({ _id, title, link, type, description, onDelete, onCopyToast, isDark }: CardProps) => {
+export const Card = ({ 
+    _id, 
+    title, 
+    link, 
+    type, 
+    description, 
+    collectionId,
+    collections = [],
+    onMoveCollection,
+    onDelete, 
+    onCopyToast, 
+    isDark 
+}: CardProps) => {
     const [metadata, setMetadata] = useState<LinkMetadata | null>(null);
     const [imgError, setImgError] = useState(false);
     const [readerOpen, setReaderOpen] = useState(false);
+    const [isMoveMenuOpen, setIsMoveMenuOpen] = useState(false);
     
     // Description / Note states
     const [descText, setDescText] = useState(description || "");
@@ -99,6 +117,9 @@ export const Card = ({ _id, title, link, type, description, onDelete, onCopyToas
     const [isNoteExpanded, setIsNoteExpanded] = useState(false);
     const [thumbError, setThumbError] = useState(false);
     const [playerOpen, setPlayerOpen] = useState(false);
+    const [isFloatingPreviewActive, setIsFloatingPreviewActive] = useState(false);
+    const floatingPopupRef = useRef<Window | null>(null);
+    const checkClosedTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
     const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -122,22 +143,45 @@ export const Card = ({ _id, title, link, type, description, onDelete, onCopyToas
         }
     }, [isEditingDesc]);
 
-    // Handle ESC key to dismiss panel
+    // Clean up closed popup monitoring interval on unmount
+    useEffect(() => {
+        return () => {
+            if (checkClosedTimerRef.current) {
+                clearInterval(checkClosedTimerRef.current);
+            }
+        };
+    }, []);
+
+    // Handle ESC key to dismiss panel, modal, or floating preview blur
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
-            if (e.key === "Escape" && (isEditingDesc || isNoteExpanded)) {
-                if (isEditingDesc) {
-                    setDescText(description || "");
-                    setIsEditingDesc(false);
-                    if (!description) setIsNoteExpanded(false);
-                } else {
-                    setIsNoteExpanded(false);
+            if (e.key === "Escape") {
+                if (isFloatingPreviewActive) {
+                    setIsFloatingPreviewActive(false);
+                    return;
+                }
+                if (readerOpen) {
+                    setReaderOpen(false);
+                    return;
+                }
+                if (playerOpen) {
+                    setPlayerOpen(false);
+                    return;
+                }
+                if (isEditingDesc || isNoteExpanded) {
+                    if (isEditingDesc) {
+                        setDescText(description || "");
+                        setIsEditingDesc(false);
+                        if (!description) setIsNoteExpanded(false);
+                    } else {
+                        setIsNoteExpanded(false);
+                    }
                 }
             }
         };
         window.addEventListener("keydown", handleKeyDown);
         return () => window.removeEventListener("keydown", handleKeyDown);
-    }, [isEditingDesc, isNoteExpanded, description]);
+    }, [isEditingDesc, isNoteExpanded, description, readerOpen, playerOpen, isFloatingPreviewActive]);
 
     // Twitter widget loader
     useEffect(() => {
@@ -202,12 +246,82 @@ export const Card = ({ _id, title, link, type, description, onDelete, onCopyToas
         }
     };
 
-    const isSharedBrain = type === "shared_brain";
-    const isArticle = type !== "youtube" && type !== "twitter" && type !== "pdf" && type !== "shared_brain" && type !== "video";
+    const openFloatingBrowser = (rawUrl: string, e?: React.MouseEvent) => {
+        if (e) {
+            e.stopPropagation();
+            e.preventDefault();
+        }
+        try {
+            const url = rawUrl.startsWith("http://") || rawUrl.startsWith("https://") ? rawUrl : `https://${rawUrl}`;
+            
+            // User requested: "can that new tab little smaller" and "blur the previous tab when the new tab open"
+            // Make the floating preview window compact, nicely centered (~70% width, ~72% height, max 980x680)
+            const screenW = window.screen.availWidth || window.innerWidth || 1280;
+            const screenH = window.screen.availHeight || window.innerHeight || 800;
+            const width = Math.min(980, Math.max(680, Math.floor(screenW * 0.70)));
+            const height = Math.min(680, Math.max(480, Math.floor(screenH * 0.72)));
+            const left = Math.max(0, Math.floor((screenW - width) / 2));
+            const top = Math.max(0, Math.floor((screenH - height) / 2));
+            const features = `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes,status=yes,location=yes,menubar=no,toolbar=no`;
+            
+            if (checkClosedTimerRef.current) {
+                clearInterval(checkClosedTimerRef.current);
+                checkClosedTimerRef.current = null;
+            }
+
+            const popup = window.open(url, `MemoraPreview_${Date.now()}`, features);
+            floatingPopupRef.current = popup;
+            setIsFloatingPreviewActive(true);
+
+            if (!popup || popup.closed || typeof popup.closed === "undefined") {
+                window.open(url, "_blank", "noopener,noreferrer");
+            } else {
+                try {
+                    popup.focus();
+                } catch {}
+
+                // Automatically un-blur the previous tab once the floating window is closed
+                checkClosedTimerRef.current = setInterval(() => {
+                    try {
+                        if (!popup || popup.closed) {
+                            if (checkClosedTimerRef.current) {
+                                clearInterval(checkClosedTimerRef.current);
+                                checkClosedTimerRef.current = null;
+                            }
+                            setIsFloatingPreviewActive(false);
+                            floatingPopupRef.current = null;
+                        }
+                    } catch {
+                        if (checkClosedTimerRef.current) {
+                            clearInterval(checkClosedTimerRef.current);
+                            checkClosedTimerRef.current = null;
+                        }
+                        setIsFloatingPreviewActive(false);
+                    }
+                }, 500);
+            }
+        } catch (e) {
+            console.error("Failed to open floating preview window", e);
+            window.open(rawUrl, "_blank");
+        }
+    };
+
+    const normalizedLink = link.startsWith("http://") || link.startsWith("https://") ? link : `https://${link}`;
+    const isLinkPdf = (link || "").toLowerCase().includes(".pdf") || 
+                      (link || "").toLowerCase().includes("/pdf") || 
+                      (link || "").toLowerCase().includes("arxiv.org/pdf") || 
+                      (link || "").toLowerCase().includes("drive.google.com") || 
+                      (title || "").toLowerCase().endsWith(".pdf") || 
+                      metadata?.description === "PDF Document";
+    const effectiveType = (type === "pdf" || (type === "article" && isLinkPdf)) ? "pdf" : type;
+    const isSharedBrain = effectiveType === "shared_brain";
+    const isArticle = effectiveType !== "youtube" && effectiveType !== "twitter" && effectiveType !== "pdf" && effectiveType !== "shared_brain" && effectiveType !== "video";
     const hasImage = isArticle && metadata?.image && !imgError;
-    const domainName = metadata?.domain || (() => { try { return new URL(link.startsWith("http") ? link : `https://${link}`).hostname; } catch { return ""; } })();
+    const domainName = metadata?.domain || (() => { try { return new URL(normalizedLink).hostname; } catch { return ""; } })();
     const ytVideoId = getYouTubeVideoId(link);
     const ytThumbnailUrl = ytVideoId ? `https://img.youtube.com/vi/${ytVideoId}/hqdefault.jpg` : null;
+
+
 
     const isPanelOpen = isEditingDesc || isNoteExpanded;
 
@@ -260,9 +374,8 @@ export const Card = ({ _id, title, link, type, description, onDelete, onCopyToas
                 >
                     {/* Header Row: Note tag on left, Open action on right */}
                     <div className="flex items-center justify-between gap-1.5 shrink-0">
-                        <span className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-purple-400">
-                            <span>📝</span>
-                            <span>Note</span>
+                        <span className="text-[10px] font-semibold uppercase tracking-wider text-purple-400">
+                            Note
                         </span>
                         <span className="text-[10px] font-semibold text-purple-400 group-hover/desc:text-purple-300 flex items-center gap-1 transition-colors">
                             <span>Open</span>
@@ -307,9 +420,8 @@ export const Card = ({ _id, title, link, type, description, onDelete, onCopyToas
                     <>
                         {/* Editor Header */}
                         <div className="flex items-center justify-between pb-2 mb-2.5 border-b border-white/10 shrink-0">
-                            <span className="text-xs font-semibold text-purple-400 flex items-center gap-1.5">
-                                <span>✍️</span>
-                                <span>{description ? "Edit Personal Note" : "Add Personal Note"}</span>
+                            <span className="text-xs font-semibold text-purple-400">
+                                {description ? "Edit Description" : "Add Description"}
                             </span>
                             <button
                                 type="button"
@@ -337,7 +449,7 @@ export const Card = ({ _id, title, link, type, description, onDelete, onCopyToas
                                 ref={textareaRef}
                                 value={descText}
                                 onChange={(e) => setDescText(e.target.value)}
-                                placeholder="Write your personal thoughts, takeaways, or key highlights..."
+                                placeholder="Write your thoughts, takeaways, or key highlights..."
                                 className={`w-full flex-1 min-h-0 bg-transparent text-xs outline-none resize-none leading-relaxed overflow-y-auto font-normal ${
                                     isDark ? "text-gray-100 placeholder:text-gray-500" : "text-gray-800 placeholder:text-gray-400"
                                 }`}
@@ -371,10 +483,7 @@ export const Card = ({ _id, title, link, type, description, onDelete, onCopyToas
                                         <span>Saving...</span>
                                     </>
                                 ) : (
-                                    <>
-                                        <span>💾</span>
-                                        <span>Save Note</span>
-                                    </>
+                                    <span>Save Note</span>
                                 )}
                             </button>
                         </div>
@@ -387,7 +496,7 @@ export const Card = ({ _id, title, link, type, description, onDelete, onCopyToas
                             <div className="flex items-center gap-2">
                                 <span className="p-1 rounded-md bg-purple-500/15 text-purple-400 text-xs">📝</span>
                                 <span className="text-xs font-semibold tracking-wide text-purple-400">
-                                    Personal Note
+                                    Description
                                 </span>
                             </div>
                             <button
@@ -441,6 +550,10 @@ export const Card = ({ _id, title, link, type, description, onDelete, onCopyToas
         );
     };
 
+    if (type === "shared_brain") {
+        return null;
+    }
+
     return (
         <>
         <div className={`rounded-2xl border p-5 shadow-sm transition-[shadow,transform] duration-300 ease-out flex flex-col w-full group relative overflow-hidden h-[360px] ${
@@ -456,13 +569,13 @@ export const Card = ({ _id, title, link, type, description, onDelete, onCopyToas
             }`}>
                 <div className="flex items-center gap-2.5 min-w-0">
                     <div className={`p-2 rounded-xl shrink-0 ${
-                        (type === "youtube" || type === "video") ? (isDark ? "bg-emerald-500/15 text-emerald-400" : "bg-emerald-50 text-emerald-500") :
-                        type === "twitter" ? (isDark ? "bg-white/[0.08] text-white" : "bg-neutral-100 text-neutral-900") : 
-                        type === "pdf" ? (isDark ? "bg-red-500/20 text-red-400" : "bg-red-50 text-red-600") :
+                        (effectiveType === "youtube" || effectiveType === "video") ? (isDark ? "bg-emerald-500/15 text-emerald-400" : "bg-emerald-50 text-emerald-500") :
+                        effectiveType === "twitter" ? (isDark ? "bg-white/[0.08] text-white" : "bg-neutral-100 text-neutral-900") : 
+                        effectiveType === "pdf" ? (isDark ? "bg-red-500/20 text-red-400" : "bg-red-50 text-red-600") :
                         isSharedBrain ? (isDark ? "bg-emerald-500/15 text-emerald-400" : "bg-emerald-50 text-emerald-600") :
                         (isDark ? "bg-purple-500/15 text-purple-400" : "bg-purple-50 text-purple-600")
                     }`}>
-                        {(type === "youtube" || type === "video") && (
+                        {(effectiveType === "youtube" || effectiveType === "video") && (
                             <img
                                 width="24"
                                 height="24"
@@ -473,7 +586,7 @@ export const Card = ({ _id, title, link, type, description, onDelete, onCopyToas
                                 }`}
                             />
                         )}
-                        {type === "twitter" && (
+                        {effectiveType === "twitter" && (
                             <img
                                 width="50"
                                 height="50"
@@ -484,7 +597,7 @@ export const Card = ({ _id, title, link, type, description, onDelete, onCopyToas
                                 }`}
                             />
                         )}
-                        {type === "pdf" && (
+                        {effectiveType === "pdf" && (
                             <img
                                 src="https://img.icons8.com/fluency-systems-regular/48/pdf-2.png"
                                 alt="pdf-2"
@@ -517,14 +630,95 @@ export const Card = ({ _id, title, link, type, description, onDelete, onCopyToas
                         }`} title={title}>
                             {title}
                         </h3>
-                        <span className={`text-[11px] font-semibold capitalize ${isDark ? "text-gray-400" : "text-gray-400"}`}>
-                            {isSharedBrain ? "Memora Vault" : (domainName || type)}
-                        </span>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className={`text-[11px] font-semibold capitalize ${isDark ? "text-gray-400" : "text-gray-400"}`}>
+                                {isSharedBrain ? "Memora Vault" : (domainName || effectiveType)}
+                            </span>
+                            {collectionId && collections && (() => {
+                                const matchedCol = collections.find(c => c._id === collectionId);
+                                if (!matchedCol) return null;
+                                return (
+                                    <span 
+                                        className="px-1.5 py-0.2 rounded text-[10px] font-medium bg-purple-500/15 text-purple-400 border border-purple-500/20 truncate max-w-[120px]"
+                                        title={`Collection: ${matchedCol.title}`}
+                                    >
+                                        {matchedCol.icon || "📁"} {matchedCol.title}
+                                    </span>
+                                );
+                            })()}
+                        </div>
                     </div>
                 </div>
                 
                 {/* Actions */}
                 <div className="flex items-center gap-1 shrink-0 text-gray-400">
+                    {/* Move to Collection Dropdown Button */}
+                    {onMoveCollection && collections && collections.length > 0 && (
+                        <div className="relative">
+                            <button
+                                type="button"
+                                onClick={() => setIsMoveMenuOpen(!isMoveMenuOpen)}
+                                className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                                    isDark ? "hover:bg-white/10 hover:text-white" : "hover:bg-gray-100 hover:text-gray-600"
+                                } ${isMoveMenuOpen ? "text-purple-400 bg-white/10" : ""}`}
+                                title="Move to Collection"
+                            >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                                </svg>
+                            </button>
+
+                            {isMoveMenuOpen && (
+                                <div 
+                                    onClick={(e) => e.stopPropagation()}
+                                    className={`absolute right-0 top-8 z-40 w-44 rounded-xl border shadow-2xl p-1 animate-in fade-in zoom-in-95 duration-150 ${
+                                        isDark ? "bg-[#222226] border-white/10 text-gray-200" : "bg-white border-gray-200 text-gray-800"
+                                    }`}
+                                >
+                                    <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                                        Move to folder
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setIsMoveMenuOpen(false);
+                                            onMoveCollection(_id, null);
+                                        }}
+                                        className={`w-full px-2.5 py-1.5 rounded-lg text-xs font-medium text-left transition-colors flex items-center justify-between cursor-pointer ${
+                                            !collectionId 
+                                                ? "bg-purple-600 text-white" 
+                                                : isDark ? "hover:bg-white/10" : "hover:bg-gray-100"
+                                        }`}
+                                    >
+                                        <span className="truncate">📁 General Vault</span>
+                                        {!collectionId && <span>✓</span>}
+                                    </button>
+                                    <div className="my-1 border-t border-white/5" />
+                                    <div className="max-h-36 overflow-y-auto flex flex-col gap-0.5">
+                                        {collections.map((c) => (
+                                            <button
+                                                key={c._id}
+                                                type="button"
+                                                onClick={() => {
+                                                    setIsMoveMenuOpen(false);
+                                                    onMoveCollection(_id, c._id);
+                                                }}
+                                                className={`w-full px-2.5 py-1.5 rounded-lg text-xs font-medium text-left transition-colors flex items-center justify-between cursor-pointer ${
+                                                    collectionId === c._id
+                                                        ? "bg-purple-600 text-white"
+                                                        : isDark ? "hover:bg-white/10" : "hover:bg-gray-100"
+                                                }`}
+                                            >
+                                                <span className="truncate">{c.icon || "📁"} {c.title}</span>
+                                                {collectionId === c._id && <span>✓</span>}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
                     <button 
                         onClick={handleCopy}
                         className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
@@ -534,21 +728,23 @@ export const Card = ({ _id, title, link, type, description, onDelete, onCopyToas
                     >
                         <ShareIcon size="md"/>
                     </button>
-                    <button 
-                        onClick={() => onDelete(_id)}
-                        className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
-                            isDark ? "hover:bg-red-500/20 hover:text-red-400" : "hover:bg-red-50 hover:text-red-500"
-                        }`}
-                        title="Delete Memory"
-                    >
-                        <Delete size="md"/>
-                    </button>
+                    {onDelete && (
+                        <button 
+                            onClick={() => onDelete(_id)}
+                            className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                                isDark ? "hover:bg-red-500/20 hover:text-red-400" : "hover:bg-red-50 hover:text-red-500"
+                            }`}
+                            title="Delete Memory"
+                        >
+                            <Delete size="md"/>
+                        </button>
+                    )}
                 </div>
             </div>
 
             {/* Card Content Body */}
             <div className="pt-2 flex flex-col flex-1 min-h-0 overflow-hidden">
-                {(type === "youtube" || type === "video") && (
+                {(effectiveType === "youtube" || effectiveType === "video") && (
                     <div className="flex flex-col gap-2 w-full flex-1 min-h-0 justify-between">
                         <div className="flex flex-col gap-2 min-h-0 flex-1">
                             {/* 1. Video Thumbnail / Preview (Adaptively expands when no note to eliminate empty space) */}
@@ -558,14 +754,14 @@ export const Card = ({ _id, title, link, type, description, onDelete, onCopyToas
                                     descText ? "min-h-[85px] max-h-[105px]" : "min-h-[140px] max-h-[175px]"
                                 }`}
                             >
-                                {type === "youtube" && ytThumbnailUrl && !thumbError ? (
+                                {effectiveType === "youtube" && ytThumbnailUrl && !thumbError ? (
                                     <img
                                         src={ytThumbnailUrl}
                                         alt={title}
                                         className="w-full h-full object-cover transition-transform duration-300 group-hover/thumb:scale-105"
                                         onError={() => setThumbError(true)}
                                     />
-                                ) : type === "video" ? (
+                                ) : effectiveType === "video" ? (
                                     <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-emerald-950/40 via-[#18181b] to-black gap-1.5 p-2.5">
                                         <div className="p-2 rounded-xl bg-emerald-600/20 text-emerald-500 border border-emerald-500/20">
                                             <img
@@ -589,7 +785,7 @@ export const Card = ({ _id, title, link, type, description, onDelete, onCopyToas
                                 
                                 {/* Play Button Overlay */}
                                 <div className="absolute inset-0 bg-black/20 group-hover/thumb:bg-black/50 transition-colors flex items-center justify-center">
-                                    <div className={`rounded-xl ${type === "video" ? "bg-emerald-600/90" : "bg-red-600/90"} text-white flex items-center justify-center shadow-lg transition-all duration-300 group-hover/thumb:scale-110 ${
+                                    <div className={`rounded-xl ${effectiveType === "video" ? "bg-emerald-600/90" : "bg-red-600/90"} text-white flex items-center justify-center shadow-lg transition-all duration-300 group-hover/thumb:scale-110 ${
                                         descText ? "w-8 h-8" : "w-10 h-10"
                                     }`}>
                                         <svg className={`${descText ? "w-3.5 h-3.5" : "w-4 h-4"} fill-current ml-0.5`} viewBox="0 0 24 24">
@@ -640,7 +836,7 @@ export const Card = ({ _id, title, link, type, description, onDelete, onCopyToas
                     </div>
                 )}
 
-                {type === "twitter" && (
+                {effectiveType === "twitter" && (
                     <div className="flex flex-col gap-2 w-full flex-1 min-h-0 justify-between">
                         {/* Twitter Embed Container with hidden scrollbars and clean framing */}
                         <div className={`flex-1 min-h-0 overflow-y-auto overflow-x-hidden rounded-xl border flex justify-center [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden p-1 ${
@@ -695,7 +891,7 @@ export const Card = ({ _id, title, link, type, description, onDelete, onCopyToas
                     </div>
                 )}
 
-                {type === "pdf" && (
+                {effectiveType === "pdf" && (
                     <div className="flex flex-col gap-2 h-full w-full flex-1 min-h-0 justify-between">
                         <div className={`flex-1 min-h-0 flex flex-col rounded-xl border overflow-hidden transition-colors ${
                             isDark 
@@ -787,120 +983,82 @@ export const Card = ({ _id, title, link, type, description, onDelete, onCopyToas
 
                 {isArticle && (
                     <div className="flex flex-col gap-2 h-full w-full flex-1 min-h-0 justify-between">
-                        <a 
-                            href={link} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className={`flex-1 min-h-0 flex flex-col rounded-xl border overflow-hidden transition-colors ${
-                                isDark 
-                                    ? "bg-purple-950/20 border-purple-500/20 text-gray-200 hover:border-purple-500/40" 
-                                    : "bg-gradient-to-b from-purple-50/50 to-indigo-50/30 border-purple-100/50 text-gray-600 hover:border-purple-300"
-                            }`}
-                        >
-                            {/* OG Image */}
-                            {hasImage && (
-                                <div className="w-full h-20 shrink-0 overflow-hidden bg-gray-100">
+                        <div className={`flex-1 min-h-0 flex flex-col rounded-xl border overflow-hidden transition-colors ${
+                            isDark 
+                                ? "bg-purple-950/10 border-purple-500/20 text-gray-200 hover:border-purple-500/40" 
+                                : "bg-gradient-to-b from-purple-50/50 to-indigo-50/30 border-purple-100/50 text-gray-600 hover:border-purple-300"
+                        }`}>
+                            {/* Visual Image / Thumbnail */}
+                            <div 
+                                onClick={(e) => openFloatingBrowser(normalizedLink, e)}
+                                className={`w-full flex-1 min-h-[95px] overflow-hidden relative flex flex-col items-center justify-center cursor-pointer group/article-thumb ${
+                                    isDark ? "bg-black/40" : "bg-gray-100"
+                                }`}
+                                title="Click to preview website in preview window"
+                            >
+                                {hasImage ? (
                                     <img
                                         src={metadata!.image}
                                         alt={title}
-                                        className="w-full h-full object-cover transition-transform duration-300 group-hover/scale-105"
+                                        className="w-full h-full object-cover transition-transform duration-300 group-hover/article-thumb:scale-105"
                                         onError={() => setImgError(true)}
                                     />
-                                </div>
-                            )}
-
-                            {/* Text Content */}
-                            <div className="flex flex-col justify-between flex-1 p-2.5 overflow-hidden">
-                                <div className="flex flex-col gap-1 min-h-0">
-                                    {/* Domain Badge */}
-                                    <div className="flex items-center gap-1.5">
-                                        {metadata?.favicon && (
-                                            <img src={metadata.favicon} alt="" className="w-3.5 h-3.5 rounded-sm" />
-                                        )}
-                                        <span className={`text-[10px] font-semibold uppercase tracking-wider truncate ${isDark ? "text-purple-400" : "text-purple-600"}`}>
-                                            {metadata?.domain || "Bookmarked Link"}
-                                        </span>
-                                    </div>
-
-                                    <p className={`text-xs font-semibold line-clamp-2 ${isDark ? "text-gray-100" : "text-gray-800"}`}>
-                                        {title}
-                                    </p>
-
-                                    {metadata?.description && (
-                                        <p className={`text-[11px] line-clamp-1 leading-relaxed ${isDark ? "text-gray-400" : "text-gray-500"}`}>
-                                            {metadata.description}
-                                        </p>
-                                    )}
-                                </div>
-
-                                <div className={`inline-flex items-center gap-1.5 text-xs font-semibold pt-1 ${
-                                    isDark ? "text-purple-400" : "text-purple-600"
-                                }`}>
-                                    <span>Open Link</span>
-                                    <img
-                                        width="24"
-                                        height="24"
-                                        src="https://img.icons8.com/material-outlined/24/external-link.png"
-                                        alt="external-link"
-                                        className={`w-4 h-4 object-contain ${isDark ? "invert opacity-85" : "opacity-75"}`}
-                                    />
-                                </div>
-                            </div>
-                        </a>
-                        {renderReadOnlyNote()}
-                    </div>
-                )}
-
-                {isSharedBrain && (
-                    <div className="flex flex-col gap-2 h-full w-full flex-1 min-h-0 justify-between">
-                        <div className={`flex-1 min-h-0 flex flex-col rounded-xl border overflow-hidden p-3 justify-between transition-colors ${
-                            isDark 
-                                ? "border-emerald-500/20 bg-gradient-to-b from-emerald-950/20 via-[#1a1818] to-[#141212]" 
-                                : "border-emerald-200 bg-gradient-to-b from-emerald-50 to-white shadow-sm"
-                        }`}>
-                            <div className="flex flex-col gap-2 min-h-0">
-                                <div className="flex items-center gap-2.5">
-                                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border ${
-                                        isDark ? "bg-emerald-500/15 border-emerald-500/20 text-emerald-500" : "bg-emerald-100 border-emerald-200 text-emerald-600"
+                                ) : (
+                                    <div className={`w-full h-full flex flex-col items-center justify-center gap-2 p-3 ${
+                                        isDark ? "text-purple-400" : "text-purple-600"
                                     }`}>
-                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-                                        </svg>
-                                    </div>
-                                    <div className="min-w-0 flex-1">
-                                        <span className={`text-[10px] font-bold uppercase tracking-wider block ${isDark ? "text-emerald-400" : "text-emerald-600"}`}>
-                                            Shared Brain Vault
+                                        {metadata?.favicon ? (
+                                            <img src={metadata.favicon} alt="" className="w-10 h-10 rounded-xl p-1.5 bg-white/10 object-contain shadow-sm" />
+                                        ) : (
+                                            <div className="p-2.5 rounded-2xl bg-purple-600/20 text-purple-500 border border-purple-500/20">
+                                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                                                </svg>
+                                            </div>
+                                        )}
+                                        <span className={`text-[10px] font-bold uppercase tracking-widest ${isDark ? "text-purple-400/80" : "text-purple-600/80"}`}>
+                                            {metadata?.domain || "Web Article"}
                                         </span>
-                                        <a 
-                                            href={link} 
-                                            target="_blank" 
-                                            rel="noopener noreferrer"
-                                            className={`text-xs font-bold hover:underline line-clamp-1 mt-0.5 cursor-pointer transition-colors ${
-                                                isDark ? "text-emerald-100 hover:text-emerald-400" : "text-gray-900 hover:text-emerald-700"
-                                            }`}
-                                        >
-                                            {title}
-                                        </a>
                                     </div>
-                                </div>
-                                
-                                <div className={`p-2.5 rounded-xl border text-xs leading-relaxed flex items-start gap-2 ${
-                                    isDark ? "bg-white/5 border-white/5 text-gray-300" : "bg-white border-emerald-100 text-gray-600 shadow-sm"
-                                }`}>
-                                    <span className="text-emerald-500 text-sm">🧠</span>
-                                    <span className="line-clamp-2">{description || "Explore this shared knowledge collection."}</span>
-                                </div>
+                                )}
                             </div>
 
-                            <div className={`flex items-center gap-2 pt-2 mt-1 border-t ${isDark ? "border-white/10" : "border-emerald-100"}`}>
-                                <a
-                                    href={link}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="flex-1 py-1.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-md cursor-pointer"
-                                >
-                                    <span>Open Vault ↗️</span>
-                                </a>
+                            {/* Action Buttons: Preview (Left) and Open (Right) */}
+                            <div className={`p-1.5 shrink-0 border-t ${isDark ? "border-white/5" : "border-purple-100/50"}`}>
+                                <div className="flex items-center gap-2">
+                                    {/* Preview Button (Left side) - Launches Standalone Preview Tab Window (0% blockage) */}
+                                    <button
+                                        type="button"
+                                        onClick={(e) => openFloatingBrowser(normalizedLink, e)}
+                                        className="flex-1 py-1 px-2.5 rounded-lg bg-purple-600 hover:bg-purple-700 active:scale-95 text-white text-[11px] font-bold transition-all flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
+                                        title="Preview website in new preview window (unblocked, full website)"
+                                    >
+                                        <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                        </svg>
+                                        <span>Preview</span>
+                                    </button>
+
+                                    {/* Open Button (Right side) */}
+                                    <a
+                                        href={normalizedLink}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className={`py-1 px-2.5 rounded-lg active:scale-95 text-[11px] font-semibold transition-all flex items-center gap-1 cursor-pointer border ${
+                                            isDark ? "bg-white/10 hover:bg-white/20 text-gray-200 border-transparent" : "bg-white hover:bg-gray-50 text-gray-700 border-gray-200 shadow-xs"
+                                        }`}
+                                        title="Open Original Link"
+                                    >
+                                        <span>Open</span>
+                                        <img
+                                            width="24"
+                                            height="24"
+                                            src="https://img.icons8.com/material-outlined/24/external-link.png"
+                                            alt="external-link"
+                                            className={`w-3.5 h-3.5 object-contain ${isDark ? "invert opacity-85" : "opacity-75"}`}
+                                        />
+                                    </a>
+                                </div>
                             </div>
                         </div>
                         {renderReadOnlyNote()}
@@ -913,92 +1071,182 @@ export const Card = ({ _id, title, link, type, description, onDelete, onCopyToas
         </div>
 
         {/* Full-Screen PDF Reader Modal Overlay */}
-        {readerOpen && (
-            <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xl flex flex-col p-3 sm:p-6 animate-in fade-in duration-200">
-                {/* Modal Header */}
-                <div className="flex items-center justify-between pb-3 border-b border-white/10 text-white shrink-0">
-                    <div className="flex items-center gap-3 min-w-0">
-                        <div className="p-2 rounded-xl bg-red-500/20 text-red-400 shrink-0">
-                            <img
-                                src="https://img.icons8.com/fluency-systems-regular/48/pdf-2.png"
-                                alt="pdf-2"
-                                className="w-5 h-5 object-contain invert brightness-125"
-                            />
+        {readerOpen && typeof document !== "undefined" && createPortal(
+            <div 
+                onClick={() => setReaderOpen(false)}
+                className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-2xl flex flex-col p-3 sm:p-6 animate-in fade-in duration-200"
+                style={{ backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)' }}
+            >
+                <div 
+                    onClick={(e) => e.stopPropagation()}
+                    className="flex flex-col h-full w-full"
+                >
+                    {/* Modal Header */}
+                    <div className="flex items-center justify-between pb-3 border-b border-white/10 text-white shrink-0">
+                        <div className="flex items-center gap-3 min-w-0">
+                            <div className="p-2 rounded-xl bg-red-500/20 text-red-400 shrink-0">
+                                <img
+                                    src="https://img.icons8.com/fluency-systems-regular/48/pdf-2.png"
+                                    alt="pdf-2"
+                                    className="w-5 h-5 object-contain invert brightness-125"
+                                />
+                            </div>
+                            <div className="min-w-0">
+                                <h3 className="font-bold text-base text-white truncate max-w-md sm:max-w-xl">{title}</h3>
+                                <span className="text-xs text-gray-400 block truncate">{domainName || "PDF Document"}</span>
+                            </div>
                         </div>
-                        <div className="min-w-0">
-                            <h3 className="font-bold text-base text-white truncate max-w-md sm:max-w-xl">{title}</h3>
-                            <span className="text-xs text-gray-400 block truncate">{domainName || "PDF Document"}</span>
+                        <div className="flex items-center gap-3 shrink-0">
+                            <a
+                                href={normalizedLink}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="px-3.5 py-1.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-semibold transition-all flex items-center gap-1.5 shadow-md cursor-pointer"
+                            >
+                                <span>Open Original</span>
+                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                </svg>
+                            </a>
+                            <button
+                                type="button"
+                                onClick={() => setReaderOpen(false)}
+                                className="p-2 rounded-xl text-gray-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer text-base font-bold flex items-center justify-center w-9 h-9 border border-white/10"
+                                title="Close Reader (ESC)"
+                            >
+                                ✕
+                            </button>
                         </div>
                     </div>
-                    <div className="flex items-center gap-3 shrink-0">
-                        <a
-                            href={link}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="px-3.5 py-1.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-semibold transition-all flex items-center gap-1.5 shadow-md cursor-pointer"
-                        >
-                            <span>Open Original</span>
-                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                            </svg>
-                        </a>
-                        <button
-                            type="button"
-                            onClick={() => setReaderOpen(false)}
-                            className="p-2 rounded-xl text-gray-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer text-base font-bold flex items-center justify-center w-9 h-9 border border-white/10"
-                            title="Close Reader (ESC)"
-                        >
-                            ✕
-                        </button>
-                    </div>
-                </div>
 
-                {/* Main Full-Height Viewer Container */}
-                <div className="flex-1 w-full mt-3 rounded-2xl overflow-hidden border border-white/10 bg-[#121212] shadow-2xl relative">
-                    <iframe
-                        src={getPdfViewerUrl(link)}
-                        className="w-full h-full border-0"
-                        title={title}
-                    />
+                    {/* Main Full-Height Viewer Container */}
+                    <div className="flex-1 w-full mt-3 rounded-2xl overflow-hidden border border-white/10 bg-[#121212] shadow-2xl relative">
+                        <iframe
+                            src={getPdfViewerUrl(normalizedLink)}
+                            className="w-full h-full border-0"
+                            title={title}
+                        />
+                    </div>
                 </div>
-            </div>
+            </div>,
+            document.body
         )}
 
         {/* Video Player Modal Overlay (YouTube & Native Video) */}
-        {playerOpen && (
-            <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xl flex flex-col items-center justify-center p-4 sm:p-8 animate-in fade-in duration-200">
-                <div className="w-full max-w-4xl flex justify-end mb-4">
-                    <button
-                        type="button"
-                        onClick={() => setPlayerOpen(false)}
-                        className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-sm font-bold border border-white/20 transition-all cursor-pointer flex items-center gap-2 shadow-md"
-                    >
-                        <span>Close Video</span>
-                        <span className="text-lg leading-none">✕</span>
-                    </button>
-                </div>
-                <div className="relative w-full max-w-4xl aspect-video bg-black rounded-2xl overflow-hidden shadow-2xl border border-white/10 flex flex-col shrink-0">
-                    {type === "youtube" ? (
-                        <iframe
-                            src={`${getYouTubeEmbedUrl(link)}?autoplay=1`}
-                            title={title}
-                            className="w-full h-full border-0"
-                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                            allowFullScreen
-                        />
-                    ) : (
-                        <video 
-                            src={link} 
-                            controls 
-                            autoPlay 
-                            className="w-full h-full outline-none"
-                            controlsList="nodownload"
+        {playerOpen && typeof document !== "undefined" && createPortal(
+            <div 
+                onClick={() => setPlayerOpen(false)}
+                className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-2xl flex flex-col items-center justify-center p-4 sm:p-8 animate-in fade-in duration-200"
+                style={{ backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)' }}
+            >
+                <div 
+                    onClick={(e) => e.stopPropagation()}
+                    className="w-full max-w-4xl flex flex-col items-center"
+                >
+                    <div className="w-full flex justify-end mb-4">
+                        <button
+                            type="button"
+                            onClick={() => setPlayerOpen(false)}
+                            className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-sm font-bold border border-white/20 transition-all cursor-pointer flex items-center gap-2 shadow-md"
                         >
-                            Your browser does not support the video tag.
-                        </video>
-                    )}
+                            <span>Close Video</span>
+                            <span className="text-lg leading-none">✕</span>
+                        </button>
+                    </div>
+                    <div className="relative w-full aspect-video bg-black rounded-2xl overflow-hidden shadow-2xl border border-white/10 flex flex-col shrink-0">
+                        {type === "youtube" ? (
+                            <iframe
+                                src={`${getYouTubeEmbedUrl(link)}?autoplay=1`}
+                                title={title}
+                                className="w-full h-full border-0"
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                allowFullScreen
+                            />
+                        ) : (
+                            <video 
+                                src={normalizedLink} 
+                                controls 
+                                autoPlay 
+                                className="w-full h-full outline-none"
+                                controlsList="nodownload"
+                            >
+                                Your browser does not support the video tag.
+                            </video>
+                        )}
+                    </div>
                 </div>
-            </div>
+            </div>,
+            document.body
+        )}
+
+
+
+        {/* Blurred Previous Tab Overlay when Floating Preview Window is Open */}
+        {isFloatingPreviewActive && typeof document !== "undefined" && createPortal(
+            <div 
+                onClick={() => setIsFloatingPreviewActive(false)}
+                className="fixed inset-0 z-[9998] bg-black/65 backdrop-blur-2xl flex flex-col items-center justify-center p-4 sm:p-6 animate-in fade-in duration-200 select-none cursor-pointer"
+                style={{ backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)' }}
+                title="Click anywhere to dismiss blur"
+            >
+                {/* Floating Status Notification Glass Card */}
+                <div 
+                    onClick={(e) => e.stopPropagation()}
+                    className="flex flex-col items-center text-center max-w-sm w-full p-6 rounded-2xl bg-[#141416]/90 border border-purple-500/30 shadow-2xl backdrop-blur-xl animate-in zoom-in-95 duration-200 cursor-default"
+                >
+                    {/* Glowing Icon */}
+                    <div className="relative mb-3 flex items-center justify-center">
+                        <div className="w-12 h-12 rounded-2xl bg-purple-600/20 border border-purple-500/30 flex items-center justify-center text-purple-400 shadow-inner">
+                            <svg className="w-6 h-6 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                            </svg>
+                        </div>
+                        <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-purple-500"></span>
+                        </span>
+                    </div>
+
+                    <h4 className="text-white font-bold text-sm sm:text-base mb-1 truncate max-w-full">
+                        {title || "Website Preview Open"}
+                    </h4>
+                    <p className="text-[11px] text-purple-300/80 mb-3 truncate max-w-full font-mono">
+                        {domainName || normalizedLink}
+                    </p>
+                    <p className="text-xs text-gray-400 mb-5 leading-relaxed">
+                        Previous tab is blurred while preview window is active.
+                    </p>
+
+                    <div className="flex items-center gap-2.5 w-full">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                try {
+                                    floatingPopupRef.current?.focus();
+                                } catch {}
+                            }}
+                            className="flex-1 py-2 px-3 rounded-xl bg-purple-600 hover:bg-purple-700 active:scale-95 text-white text-xs font-semibold transition-all shadow-md cursor-pointer flex items-center justify-center gap-1.5"
+                        >
+                            <span>Focus Window</span>
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                            </svg>
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setIsFloatingPreviewActive(false)}
+                            className="py-2 px-3.5 rounded-xl bg-white/10 hover:bg-white/20 active:scale-95 text-gray-300 hover:text-white text-xs font-semibold border border-white/10 transition-all cursor-pointer"
+                        >
+                            Dismiss
+                        </button>
+                    </div>
+
+                    <span className="text-[10px] text-gray-500 mt-3.5">
+                        Click background or press ESC to dismiss blur
+                    </span>
+                </div>
+            </div>,
+            document.body
         )}
         </>
     );
