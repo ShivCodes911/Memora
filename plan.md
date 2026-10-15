@@ -242,7 +242,7 @@ flowchart LR
 | # | What | Why | How |
 |---|---|---|---|
 | 3.1 | `zod` validation | Replaces dozens of hand-written `typeof` checks | `npm i zod`; create `validators/`; a `validate(schema)` middleware that returns 400 |
-| 3.2 | Shared helpers | Stops copy-pasted code and scattered `catch` blocks | `utils/objectId.ts` (`isValidId`), `utils/asyncHandler.ts`, and a **global error middleware** in `app.ts` (11000 → 409, everything else → "Internal server error") |
+| 3.2 | Shared helpers | Stops copy-pasted code and scattered `catch` blocks | `utils/objectId.ts` (`isValidId`) and a **global error middleware** in `app.ts` (11000 → 409, everything else → "Internal server error"). No `asyncHandler` needed: Express 5 already passes errors from `async` handlers to the error middleware |
 | 3.3 | One response shape | The frontend currently reads `data.collection`, `data.data.collection`, `updatedCollection.collection`… | Use `{ message, data }` everywhere, **before** building the collections frontend |
 | 3.4 | Validate env vars at startup | Crash early with a clear message instead of failing later | `config/env.ts` checks `MONGO_URI`, `JWT_SECRET`, `PORT`, `FRONTEND_URL`. Also fix `.env.example` (`PORT=8000` → `3000`) |
 | 3.5 | Remove dead code | `tags.model.ts` is unused, and its title is unique **across all users** | Delete it, or redesign it as per-user tags |
