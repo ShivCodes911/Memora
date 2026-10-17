@@ -436,7 +436,33 @@ export function Dashboard() {
           onFilterChange={setTypeFilter}
           filterCounts={filterCounts}
           isDark={isDark}
-          title={currentWorkspace !== "personal" && sharedWorkspaceData ? `${sharedWorkspaceData.username}'s Brain` : undefined}
+          title={
+            currentWorkspace !== "personal" && sharedWorkspaceData
+              ? `${sharedWorkspaceData.username}'s Brain`
+              : activeTab === "collections"
+              ? selectedCollection ? (
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedCollection(null)}
+                      className="hover:text-white transition-colors cursor-pointer"
+                    >
+                      Collections
+                    </button>
+                    <span className="text-gray-600">/</span>
+                    <span className="text-gray-200">{selectedCollection.title}</span>
+                  </div>
+                ) : (
+                  "Collections"
+                )
+              : activeTab === "tags"
+              ? "Tags"
+              : activeTab === "favorites"
+              ? "Favorites"
+              : activeTab === "settings"
+              ? "Settings"
+              : undefined
+          }
         />
 
         {/* Viewport Canvas */}

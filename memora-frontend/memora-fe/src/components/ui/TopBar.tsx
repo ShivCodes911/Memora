@@ -21,7 +21,7 @@ export interface TopBarProps {
   onSearchChange?: (query: string) => void;
   className?: string;
   isDark?: boolean;
-  title?: string;
+  title?: React.ReactNode;
   activeFilter?: string;
   onFilterChange?: (filterId: string) => void;
   filterCounts?: FilterCounts;
@@ -138,9 +138,9 @@ export function TopBar({
             isOpen={isSidebarOpen}
           />
         </div>
-        <span className="text-sm font-medium text-gray-400 opacity-75 hover:opacity-100 transition-all whitespace-nowrap">
+        <div className="text-sm font-medium text-gray-400 opacity-75 hover:opacity-100 transition-all whitespace-nowrap flex items-center gap-1.5">
           {title || "Dashboard"}
-        </span>
+        </div>
       </div>
 
       {/* Center / Rest of Top Bar: Empty and Distraction-Free */}
