@@ -62,13 +62,12 @@ export function CollectionModal({
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200">
-      <div 
+      <div
         onClick={(e) => e.stopPropagation()}
-        className={`w-full max-w-md rounded-3xl border shadow-2xl p-6 sm:p-7 relative transition-all ${
-          isDark 
-            ? "bg-[#18181b] border-white/10 text-white" 
+        className={`w-full max-w-md rounded-3xl border shadow-2xl p-6 sm:p-7 relative transition-all ${isDark
+            ? "bg-[#18181b] border-white/10 text-white"
             : "bg-white border-gray-200 text-gray-900"
-        }`}
+          }`}
       >
         {/* Header */}
         <div className="flex items-center justify-between pb-4 border-b border-white/5">
@@ -112,11 +111,10 @@ export function CollectionModal({
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="e.g. AI Research, Design Inspiration, Study..."
-              className={`w-full px-4 py-2.5 rounded-xl border text-sm font-medium focus:outline-none transition-all ${
-                isDark 
-                  ? "bg-black/40 border-white/10 focus:border-purple-500 text-white placeholder-gray-500" 
+              className={`w-full px-4 py-2.5 rounded-xl border text-sm font-medium focus:outline-none transition-all ${isDark
+                  ? "bg-black/40 border-white/10 focus:border-purple-500 text-white placeholder-gray-500"
                   : "bg-gray-50 border-gray-200 focus:border-purple-600 text-gray-900 placeholder-gray-400"
-              }`}
+                }`}
             />
           </div>
 
@@ -131,13 +129,12 @@ export function CollectionModal({
                   key={preset}
                   type="button"
                   onClick={() => setIcon(preset)}
-                  className={`h-11 rounded-xl flex items-center justify-center p-1.5 transition-all cursor-pointer ${
-                    icon === preset
+                  className={`h-11 rounded-xl flex items-center justify-center p-1.5 transition-all cursor-pointer ${icon === preset
                       ? "bg-purple-600/20 border-2 border-purple-500 ring-2 ring-purple-500/30 shadow-md scale-105"
                       : isDark
                         ? "bg-white/5 hover:bg-white/10 hover:scale-105 border border-transparent"
                         : "bg-gray-100 hover:bg-gray-200 hover:scale-105 border border-transparent"
-                  }`}
+                    }`}
                 >
                   <CollectionIcon icon={preset} className="w-7 h-7" />
                 </button>
@@ -150,11 +147,10 @@ export function CollectionModal({
             <button
               type="button"
               onClick={onClose}
-              className={`flex-1 py-2.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
-                isDark 
-                  ? "border-white/10 hover:bg-white/5 text-gray-300" 
+              className={`flex-1 py-2.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${isDark
+                  ? "border-white/10 hover:bg-white/5 text-gray-300"
                   : "border-gray-200 hover:bg-gray-50 text-gray-700"
-              }`}
+                }`}
             >
               Cancel
             </button>

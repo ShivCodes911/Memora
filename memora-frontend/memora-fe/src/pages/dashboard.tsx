@@ -236,8 +236,8 @@ export function Dashboard() {
   }, [contents]);
 
   const sourceContents = useMemo(() => {
-    const raw = currentWorkspace === "personal" 
-      ? contents 
+    const raw = currentWorkspace === "personal"
+      ? contents
       : (sharedWorkspaceData?.content || []);
     return raw.filter((item) => item.type !== "shared_brain");
   }, [currentWorkspace, contents, sharedWorkspaceData]);
@@ -331,7 +331,7 @@ export function Dashboard() {
     const updateCols = () => {
       const w = window.innerWidth;
       const isDesktop = w >= 1024;
-      
+
       if (!isDesktop) {
         if (w >= 640) setNumCols(2);
         else setNumCols(1);
@@ -418,7 +418,7 @@ export function Dashboard() {
 
       {/* ── Main Workspace Window (TopBar + Content Area) ──────────── */}
       <div className={`flex-1 h-full flex flex-col min-w-0 ${isDark ? "bg-[#191919]" : "bg-white"} overflow-hidden relative transition-all duration-300 ease-out`}>
-        
+
         {/* Top Header Bar */}
         <TopBar
           onHamburgerClick={() => {
@@ -445,7 +445,7 @@ export function Dashboard() {
             <div className="w-full h-full flex flex-col items-center justify-center text-center">
               <h2 className={`text-lg font-bold mb-2 ${isDark ? "text-white" : "text-gray-900"}`}>Unable to access brain</h2>
               <p className="text-sm text-gray-500 mb-6 max-w-sm">{sharedWorkspaceError}</p>
-              <button 
+              <button
                 onClick={() => setCurrentWorkspace("personal")}
                 className="px-4 py-2 rounded-md bg-purple-600 text-white text-xs font-semibold"
               >
@@ -492,16 +492,15 @@ export function Dashboard() {
             <div className="w-full flex flex-col gap-6">
               {/* External Shared Workspace Banner */}
               {currentWorkspace !== "personal" && sharedWorkspaceData && (
-                <div className={`p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 border ${
-                  isDark ? "bg-purple-950/25 border-purple-500/20 text-white" : "bg-purple-50 border-purple-200 text-purple-950"
-                }`}>
+                <div className={`p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 border ${isDark ? "bg-purple-950/25 border-purple-500/20 text-white" : "bg-purple-50 border-purple-200 text-purple-950"
+                  }`}>
                   <div className="flex items-center gap-3">
                     <div className="p-2.5 rounded-xl bg-purple-500/20 border border-purple-500/30 flex items-center justify-center shrink-0">
-                      <img 
-                        width="64" 
-                        height="64" 
-                        src="https://img.icons8.com/pastel-glyph/64/brain-3--v1.png" 
-                        alt="brain-3--v1" 
+                      <img
+                        width="64"
+                        height="64"
+                        src="https://img.icons8.com/pastel-glyph/64/brain-3--v1.png"
+                        alt="brain-3--v1"
                         className={`w-6 h-6 object-contain ${isDark ? "invert brightness-125" : "brightness-0 opacity-80"}`}
                       />
                     </div>
@@ -604,11 +603,10 @@ export function Dashboard() {
                             <div
                               key={sub._id}
                               onClick={() => setSelectedCollection(sub)}
-                              className={`p-3 rounded-2xl border transition-all duration-200 cursor-pointer flex items-center gap-2.5 group select-none shadow-sm ${
-                                isDark
+                              className={`p-3 rounded-2xl border transition-all duration-200 cursor-pointer flex items-center gap-2.5 group select-none shadow-sm ${isDark
                                   ? "bg-[#18181b]/90 border-white/10 hover:border-purple-500/50 hover:bg-[#202024] hover:shadow-lg"
                                   : "bg-white border-gray-200 hover:border-purple-400 hover:shadow-md"
-                              }`}
+                                }`}
                             >
                               <div className="w-9 h-9 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform p-1.5">
                                 <CollectionIcon icon={sub.icon} className="w-6 h-6" />
@@ -656,7 +654,7 @@ export function Dashboard() {
                   />
                 )
               ) : (
-                <div 
+                <div
                   className="grid gap-6 items-start transition-all duration-300"
                   style={{
                     gridTemplateColumns: `repeat(${numCols}, minmax(0, 1fr))`

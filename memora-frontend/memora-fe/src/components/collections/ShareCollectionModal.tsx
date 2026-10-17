@@ -24,8 +24,8 @@ export function ShareCollectionModal({
 
   if (!open || !collection) return null;
 
-  const shareUrl = collection.shareHash 
-    ? `${window.location.origin}/share/c/${collection.shareHash}` 
+  const shareUrl = collection.shareHash
+    ? `${window.location.origin}/share/c/${collection.shareHash}`
     : "";
 
   const handleToggle = async (enable: boolean) => {
@@ -54,11 +54,10 @@ export function ShareCollectionModal({
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200">
       <div
         onClick={(e) => e.stopPropagation()}
-        className={`w-full max-w-md rounded-3xl border shadow-2xl p-6 sm:p-7 relative transition-all ${
-          isDark 
-            ? "bg-[#18181b] border-white/10 text-white" 
+        className={`w-full max-w-md rounded-3xl border shadow-2xl p-6 sm:p-7 relative transition-all ${isDark
+            ? "bg-[#18181b] border-white/10 text-white"
             : "bg-white border-gray-200 text-gray-900"
-        }`}
+          }`}
       >
         {/* Header */}
         <div className="flex items-center justify-between pb-4 border-b border-white/5">
@@ -110,11 +109,10 @@ export function ShareCollectionModal({
                     type="text"
                     readOnly
                     value={shareUrl}
-                    className={`flex-1 px-3 py-2 rounded-xl text-xs font-mono border focus:outline-none select-all ${
-                      isDark
+                    className={`flex-1 px-3 py-2 rounded-xl text-xs font-mono border focus:outline-none select-all ${isDark
                         ? "bg-black/50 border-white/10 text-gray-300"
                         : "bg-gray-100 border-gray-200 text-gray-800"
-                    }`}
+                      }`}
                   />
                   <button
                     type="button"
@@ -150,11 +148,10 @@ export function ShareCollectionModal({
             <button
               type="button"
               onClick={onClose}
-              className={`px-4 py-2 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
-                isDark 
-                  ? "border-white/10 hover:bg-white/5 text-gray-300" 
+              className={`px-4 py-2 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${isDark
+                  ? "border-white/10 hover:bg-white/5 text-gray-300"
                   : "border-gray-200 hover:bg-gray-50 text-gray-700"
-              }`}
+                }`}
             >
               Done
             </button>
