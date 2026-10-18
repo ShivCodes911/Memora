@@ -8,7 +8,7 @@ export const authMiddleware=(req:Request,res:Response,next:NextFunction)=>{
         const authToken=req.headers.authorization;
 
     if(!authToken || !authToken.startsWith("Bearer ") ){
-        return res.status(400).json({
+        return res.status(401).json({
             message:"Unauthorized"
         });
 
