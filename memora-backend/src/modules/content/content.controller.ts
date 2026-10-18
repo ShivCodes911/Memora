@@ -6,11 +6,11 @@ import type{Request,Response} from "express";
 import linkModel from "../../models/link.model.js";
 import { hash } from "../../utils/hashingLink.util.js";
 import { toWebLink } from "../../utils/validateLink.util.js";
+import { addContentSchema } from "../../validators/content.validator.js";
 import userModel from "../../models/user.model.js";
 
 export const addContent=async(req:Request,res:Response)=>{
     try {
-        const {link,type,title,description,tags,collectionId}=req.body;
         const userId=req.userId
 
         if(!userId){
@@ -19,11 +19,16 @@ export const addContent=async(req:Request,res:Response)=>{
             })
         }
 
-       if(!link || !type || !title){
+        const parsed=addContentSchema.safeParse(req.body);
+
+        if(!parsed.success){
             return res.status(400).json({
-                message:"Link, type, and title are required."
+                message:parsed.error.issues[0]?.message ?? "Invalid input"
             })
         };
+
+        // typed + trimmed, unknown fields like tags are dropped
+        const {link,type,title,description,collectionId}=parsed.data;
 
         const webLink=toWebLink(link);
 
@@ -32,31 +37,25 @@ export const addContent=async(req:Request,res:Response)=>{
                 message:"Provide a valid web link (http or https)"
             })
         };
-        if(collectionId!==undefined && collectionId!==null){
 
-    if(typeof collectionId!=="string" || !mongoose.isValidObjectId(collectionId)){
-        return res.status(400).json({
-            message:"Enter valid CollectionID"
-        })
-    };
+        // only check ownership when a collection is given
+        if(collectionId!==null){
+            const collectionExists=await collectionModel.exists({_id:collectionId,userId});
 
-    const collectionExists=await collectionModel.exists({_id:collectionId,userId});
+            if(!collectionExists){
+                return res.status(404).json({
+                    message:"Collection not Found"
+                })
+            };
+        };
 
-    if(!collectionExists){
-        return res.status(404).json({
-            message:"Collection not Found"
-        })
-    };
-}
-
-       const content=await contentModel.create({
+        const content=await contentModel.create({
             link:webLink,
             type,
             title,
-            description: description || "",
-            tags:tags || [],
-            userId:userId,
-            collectionId:collectionId ?? null
+            description,
+            userId,
+            collectionId
         });
 
         return res.status(201).json({
