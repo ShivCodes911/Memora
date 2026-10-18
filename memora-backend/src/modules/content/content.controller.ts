@@ -5,6 +5,7 @@ import collectionModel from "../../models/collection.model.js";
 import type{Request,Response} from "express";
 import linkModel from "../../models/link.model.js";
 import { hash } from "../../utils/hashingLink.util.js";
+import { toWebLink } from "../../utils/validateLink.util.js";
 import userModel from "../../models/user.model.js";
 
 export const addContent=async(req:Request,res:Response)=>{
@@ -18,11 +19,19 @@ export const addContent=async(req:Request,res:Response)=>{
             })
         }
 
-        if(!link || !type || !title){
+       if(!link || !type || !title){
             return res.status(400).json({
                 message:"Link, type, and title are required."
             })
-        }
+        };
+
+        const webLink=toWebLink(link);
+
+        if(!webLink){
+            return res.status(400).json({
+                message:"Provide a valid web link (http or https)"
+            })
+        };
         if(collectionId!==undefined && collectionId!==null){
 
     if(typeof collectionId!=="string" || !mongoose.isValidObjectId(collectionId)){
@@ -41,7 +50,7 @@ export const addContent=async(req:Request,res:Response)=>{
 }
 
        const content=await contentModel.create({
-            link,
+            link:webLink,
             type,
             title,
             description: description || "",
