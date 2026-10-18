@@ -10,6 +10,7 @@ import { CollectionsHub } from "../components/collections/CollectionsHub";
 import { CollectionModal } from "../components/collections/CollectionModal";
 import { ShareCollectionModal } from "../components/collections/ShareCollectionModal";
 import { CollectionIcon, DEFAULT_COLLECTION_ICON } from "../components/collections/CollectionIcon";
+import { FolderTreeDrawer } from "../components/collections/FolderTreeDrawer";
 import { EmptyState } from "../components/ui/EmptyState";
 import { Toast } from "../components/ui/Toast";
 import { useContent } from "../hooks/useContent";
@@ -45,6 +46,8 @@ export function Dashboard() {
   const [editingCollection, setEditingCollection] = useState<Collection | null>(null);
   const [isShareCollectionModalOpen, setIsShareCollectionModalOpen] = useState(false);
   const [sharingCollection, setSharingCollection] = useState<Collection | null>(null);
+  const [isTreeDrawerOpen, setIsTreeDrawerOpen] = useState(false);
+  const [highlightedCardId, setHighlightedCardId] = useState<string | null>(null);
 
   const [isDark, setIsDark] = useState(() => {
     const saved = localStorage.getItem("theme");
@@ -463,6 +466,7 @@ export function Dashboard() {
               ? "Settings"
               : undefined
           }
+          onOpenTree={() => setIsTreeDrawerOpen(true)}
         />
 
         {/* Viewport Canvas */}
@@ -589,6 +593,22 @@ export function Dashboard() {
                     <div className="flex items-center gap-2.5">
                       <button
                         type="button"
+                        onClick={() => setIsTreeDrawerOpen(true)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95 ${
+                          isDark
+                            ? "bg-purple-600/15 border-purple-500/30 text-purple-300 hover:bg-purple-600/25"
+                            : "bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100"
+                        }`}
+                        title="View this collection's folder tree"
+                      >
+                        <svg className="w-3.5 h-3.5 text-purple-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
+                        </svg>
+                        <span>Tree</span>
+                      </button>
+
+                      <button
+                        type="button"
                         onClick={() => {
                           setSharingCollection(selectedCollection);
                           setIsShareCollectionModalOpen(true);
@@ -689,20 +709,29 @@ export function Dashboard() {
                   {columns.map((colItems, colIdx) => (
                     <div key={colIdx} className="flex flex-col gap-6">
                       {colItems.map(({ _id, type, link, title, description, collectionId }) => (
-                        <Card
+                        <div
                           key={_id}
-                          _id={_id}
-                          type={type}
-                          link={link}
-                          title={title}
-                          description={description}
-                          collectionId={collectionId}
-                          collections={collections}
-                          onMoveCollection={handleMoveCollection}
-                          onDelete={handleDelete}
-                          onCopyToast={showToast}
-                          isDark={isDark}
-                        />
+                          id={`card-${_id}`}
+                          className={`transition-all duration-500 rounded-2xl ${
+                            highlightedCardId === _id
+                              ? "ring-4 ring-purple-500 shadow-[0_0_35px_rgba(168,85,247,0.7)] scale-[1.02] animate-pulse"
+                              : ""
+                          }`}
+                        >
+                          <Card
+                            _id={_id}
+                            type={type}
+                            link={link}
+                            title={title}
+                            description={description}
+                            collectionId={collectionId}
+                            collections={collections}
+                            onMoveCollection={handleMoveCollection}
+                            onDelete={handleDelete}
+                            onCopyToast={showToast}
+                            isDark={isDark}
+                          />
+                        </div>
                       ))}
                     </div>
                   ))}
@@ -768,6 +797,39 @@ export function Dashboard() {
           return link;
         }}
         onCopyToast={showToast}
+        isDark={isDark}
+      />
+
+      <FolderTreeDrawer
+        open={isTreeDrawerOpen}
+        onClose={() => setIsTreeDrawerOpen(false)}
+        collections={collections}
+        contents={contents}
+        selectedCollection={selectedCollection}
+        scopedCollection={activeTab === "collections" && selectedCollection ? selectedCollection : null}
+        onSelectCollection={(col) => {
+          setSelectedCollection(col);
+          setActiveTab("collections");
+        }}
+        onSelectContent={(item) => {
+          if (item.collectionId) {
+            const parent = collections.find((c) => c._id === item.collectionId);
+            setSelectedCollection(parent || null);
+            setActiveTab("collections");
+          } else {
+            setSelectedCollection(null);
+            setActiveTab("home");
+          }
+          setIsTreeDrawerOpen(false);
+          setHighlightedCardId(item._id);
+          setTimeout(() => {
+            const el = document.getElementById(`card-${item._id}`);
+            el?.scrollIntoView({ behavior: "smooth", block: "center" });
+          }, 250);
+          setTimeout(() => {
+            setHighlightedCardId(null);
+          }, 2800);
+        }}
         isDark={isDark}
       />
 

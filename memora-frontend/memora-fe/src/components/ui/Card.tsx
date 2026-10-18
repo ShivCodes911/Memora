@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { ShareIcon } from "../../icons/shareIcon";
 import { Delete } from "../../icons/delete";
@@ -19,6 +19,7 @@ declare global {
 }
 
 import type { Collection } from "../../types/collection";
+import { CollectionIcon, DEFAULT_COLLECTION_ICON } from "../collections/CollectionIcon";
 
 interface CardProps {
     _id: string;
@@ -109,6 +110,10 @@ export const Card = ({
     const [imgError, setImgError] = useState(false);
     const [readerOpen, setReaderOpen] = useState(false);
     const [isMoveMenuOpen, setIsMoveMenuOpen] = useState(false);
+    const [currentCollectionId, setCurrentCollectionId] = useState<string | null | undefined>(collectionId);
+    const [isMovingCollection, setIsMovingCollection] = useState(false);
+    const moveMenuRef = useRef<HTMLDivElement>(null);
+    const [collectionSearch, setCollectionSearch] = useState("");
     
     // Description / Note states
     const [descText, setDescText] = useState(description || "");
@@ -128,6 +133,10 @@ export const Card = ({
         setIsNoteExpanded(false);
         setIsEditingDesc(false);
     }, [description]);
+
+    useEffect(() => {
+        setCurrentCollectionId(collectionId);
+    }, [collectionId]);
 
     useEffect(() => {
         if (isEditingDesc) {
@@ -152,10 +161,28 @@ export const Card = ({
         };
     }, []);
 
+    // Close Move-to-Collection menu on click outside
+    useEffect(() => {
+        if (!isMoveMenuOpen) return;
+        const handleClickOutside = (e: MouseEvent) => {
+            if (moveMenuRef.current && !moveMenuRef.current.contains(e.target as Node)) {
+                setIsMoveMenuOpen(false);
+                setCollectionSearch("");
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, [isMoveMenuOpen]);
+
     // Handle ESC key to dismiss panel, modal, or floating preview blur
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if (e.key === "Escape") {
+                if (isMoveMenuOpen) {
+                    setIsMoveMenuOpen(false);
+                    setCollectionSearch("");
+                    return;
+                }
                 if (isFloatingPreviewActive) {
                     setIsFloatingPreviewActive(false);
                     return;
@@ -181,7 +208,7 @@ export const Card = ({
         };
         window.addEventListener("keydown", handleKeyDown);
         return () => window.removeEventListener("keydown", handleKeyDown);
-    }, [isEditingDesc, isNoteExpanded, description, readerOpen, playerOpen, isFloatingPreviewActive]);
+    }, [isMoveMenuOpen, isEditingDesc, isNoteExpanded, description, readerOpen, playerOpen, isFloatingPreviewActive]);
 
     // Twitter widget loader
     useEffect(() => {
@@ -245,6 +272,44 @@ export const Card = ({
             setIsSavingDesc(false);
         }
     };
+
+    const handleMoveCollectionSelect = async (targetColId: string | null) => {
+        if (targetColId === currentCollectionId) {
+            setIsMoveMenuOpen(false);
+            return;
+        }
+        setIsMovingCollection(true);
+        try {
+            if (onMoveCollection) {
+                await onMoveCollection(_id, targetColId);
+            } else {
+                await axios.put(
+                    `${BACKEND_URL}/api/v1/content/${_id}`,
+                    { collectionId: targetColId },
+                    {
+                        headers: {
+                            Authorization: `Bearer ${localStorage.getItem("token")}`
+                        }
+                    }
+                );
+                if (onCopyToast) {
+                    onCopyToast(targetColId ? "Moved to collection 📁" : "Removed from collection");
+                }
+            }
+            setCurrentCollectionId(targetColId);
+            setIsMoveMenuOpen(false);
+        } catch (err: any) {
+            console.error("Failed to move memory", err);
+            if (onCopyToast) onCopyToast(err?.response?.data?.message || "Failed to move memory");
+        } finally {
+            setIsMovingCollection(false);
+        }
+    };
+
+    const filteredCollections = useMemo(() => {
+        if (!collectionSearch.trim()) return collections;
+        return collections.filter(c => c.title.toLowerCase().includes(collectionSearch.toLowerCase().trim()));
+    }, [collections, collectionSearch]);
 
     const openFloatingBrowser = (rawUrl: string, e?: React.MouseEvent) => {
         if (e) {
@@ -634,15 +699,16 @@ export const Card = ({
                             <span className={`text-[11px] font-semibold capitalize ${isDark ? "text-gray-400" : "text-gray-400"}`}>
                                 {isSharedBrain ? "Memora Vault" : (domainName || effectiveType)}
                             </span>
-                            {collectionId && collections && (() => {
-                                const matchedCol = collections.find(c => c._id === collectionId);
+                            {currentCollectionId && collections && (() => {
+                                const matchedCol = collections.find(c => c._id === currentCollectionId);
                                 if (!matchedCol) return null;
                                 return (
                                     <span 
-                                        className="px-1.5 py-0.2 rounded text-[10px] font-medium bg-purple-500/15 text-purple-400 border border-purple-500/20 truncate max-w-[120px]"
+                                        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-purple-500/15 text-purple-400 border border-purple-500/20 truncate max-w-[130px]"
                                         title={`Collection: ${matchedCol.title}`}
                                     >
-                                        {matchedCol.icon || "📁"} {matchedCol.title}
+                                        <CollectionIcon icon={matchedCol.icon} className="w-3 h-3 shrink-0" />
+                                        <span className="truncate">{matchedCol.title}</span>
                                     </span>
                                 );
                             })()}
@@ -651,72 +717,24 @@ export const Card = ({
                 </div>
                 
                 {/* Actions */}
-                <div className="flex items-center gap-1 shrink-0 text-gray-400">
+                <div className="flex items-center gap-1 shrink-0 text-gray-400 relative" ref={moveMenuRef}>
                     {/* Move to Collection Dropdown Button */}
-                    {onMoveCollection && collections && collections.length > 0 && (
-                        <div className="relative">
-                            <button
-                                type="button"
-                                onClick={() => setIsMoveMenuOpen(!isMoveMenuOpen)}
-                                className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
-                                    isDark ? "hover:bg-white/10 hover:text-white" : "hover:bg-gray-100 hover:text-gray-600"
-                                } ${isMoveMenuOpen ? "text-purple-400 bg-white/10" : ""}`}
-                                title="Move to Collection"
-                            >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
-                                </svg>
-                            </button>
-
-                            {isMoveMenuOpen && (
-                                <div 
-                                    onClick={(e) => e.stopPropagation()}
-                                    className={`absolute right-0 top-8 z-40 w-44 rounded-xl border shadow-2xl p-1 animate-in fade-in zoom-in-95 duration-150 ${
-                                        isDark ? "bg-[#222226] border-white/10 text-gray-200" : "bg-white border-gray-200 text-gray-800"
-                                    }`}
-                                >
-                                    <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-gray-400">
-                                        Move to folder
-                                    </div>
-                                    <button
-                                        type="button"
-                                        onClick={() => {
-                                            setIsMoveMenuOpen(false);
-                                            onMoveCollection(_id, null);
-                                        }}
-                                        className={`w-full px-2.5 py-1.5 rounded-lg text-xs font-medium text-left transition-colors flex items-center justify-between cursor-pointer ${
-                                            !collectionId 
-                                                ? "bg-purple-600 text-white" 
-                                                : isDark ? "hover:bg-white/10" : "hover:bg-gray-100"
-                                        }`}
-                                    >
-                                        <span className="truncate">📁 General Vault</span>
-                                        {!collectionId && <span>✓</span>}
-                                    </button>
-                                    <div className="my-1 border-t border-white/5" />
-                                    <div className="max-h-36 overflow-y-auto flex flex-col gap-0.5">
-                                        {collections.map((c) => (
-                                            <button
-                                                key={c._id}
-                                                type="button"
-                                                onClick={() => {
-                                                    setIsMoveMenuOpen(false);
-                                                    onMoveCollection(_id, c._id);
-                                                }}
-                                                className={`w-full px-2.5 py-1.5 rounded-lg text-xs font-medium text-left transition-colors flex items-center justify-between cursor-pointer ${
-                                                    collectionId === c._id
-                                                        ? "bg-purple-600 text-white"
-                                                        : isDark ? "hover:bg-white/10" : "hover:bg-gray-100"
-                                                }`}
-                                            >
-                                                <span className="truncate">{c.icon || "📁"} {c.title}</span>
-                                                {collectionId === c._id && <span>✓</span>}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-                        </div>
+                    {(onMoveCollection || (collections && collections.length > 0)) && (
+                        <button
+                            type="button"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setIsMoveMenuOpen(!isMoveMenuOpen);
+                            }}
+                            className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                                isDark ? "hover:bg-white/10 hover:text-white" : "hover:bg-gray-100 hover:text-gray-600"
+                            } ${isMoveMenuOpen ? "text-purple-400 bg-purple-500/15" : ""}`}
+                            title="Move to Collection"
+                        >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                            </svg>
+                        </button>
                     )}
 
                     <button 
@@ -738,6 +756,104 @@ export const Card = ({
                         >
                             <Delete size="md"/>
                         </button>
+                    )}
+
+                    {isMoveMenuOpen && (
+                        <div 
+                            onClick={(e) => e.stopPropagation()}
+                            className={`absolute right-0 top-9 z-50 w-52 rounded-xl border p-1 backdrop-blur-xl shadow-2xl transition-all animate-in fade-in zoom-in-95 duration-100 ${
+                                isDark ? "bg-[#18181b]/95 border-white/10 text-gray-200" : "bg-white/95 border-gray-200 text-gray-800 shadow-xl"
+                            }`}
+                        >
+                            {/* Quick search input if 4+ collections */}
+                            {collections.length >= 4 && (
+                                <div className="p-1 pb-1.5">
+                                    <div className="relative flex items-center">
+                                        <svg className="w-3.5 h-3.5 absolute left-2 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                        </svg>
+                                        <input
+                                            type="text"
+                                            autoFocus
+                                            placeholder="Move to..."
+                                            value={collectionSearch}
+                                            onChange={(e) => setCollectionSearch(e.target.value)}
+                                            className={`w-full pl-7 pr-5 py-1 text-xs rounded-lg border-0 focus:outline-none transition-all ${
+                                                isDark 
+                                                    ? "bg-white/5 text-gray-200 placeholder-gray-500 focus:bg-white/10" 
+                                                    : "bg-gray-100 text-gray-800 placeholder-gray-400 focus:bg-gray-200/70"
+                                            }`}
+                                        />
+                                        {collectionSearch && (
+                                            <button
+                                                type="button"
+                                                onClick={() => setCollectionSearch("")}
+                                                className="absolute right-1.5 text-[11px] text-gray-400 hover:text-white cursor-pointer"
+                                            >
+                                                ✕
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Root Vault option */}
+                            <button
+                                type="button"
+                                disabled={isMovingCollection}
+                                onClick={() => handleMoveCollectionSelect(null)}
+                                className={`w-full px-2 py-1.5 rounded-lg text-xs font-medium text-left transition-colors flex items-center justify-between cursor-pointer ${
+                                    !currentCollectionId 
+                                        ? "bg-purple-600/15 text-purple-300 font-semibold" 
+                                        : isDark ? "hover:bg-white/5 text-gray-300" : "hover:bg-gray-100 text-gray-700"
+                                }`}
+                            >
+                                <span className="flex items-center gap-2 truncate">
+                                    <CollectionIcon icon={DEFAULT_COLLECTION_ICON} className="w-4 h-4 shrink-0" />
+                                    <span className="truncate">General Vault</span>
+                                </span>
+                                {!currentCollectionId && <span className="text-purple-400 font-bold text-xs ml-1.5">✓</span>}
+                            </button>
+
+                            {/* Subtle 1px divider */}
+                            <div className={`my-1 border-t ${isDark ? "border-white/5" : "border-gray-100"}`} />
+
+                            {/* Collections List */}
+                            <div className={`max-h-52 overflow-y-auto flex flex-col gap-0.5 [scrollbar-width:thin] ${
+                                isDark 
+                                    ? "[scrollbar-color:rgba(255,255,255,0.15)_transparent] [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/15 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-white/30"
+                                    : "[scrollbar-color:rgba(0,0,0,0.15)_transparent] [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-gray-400"
+                            }`}>
+                                {filteredCollections.length === 0 ? (
+                                    <div className="px-2 py-3 text-center text-xs text-gray-400">
+                                        {collectionSearch ? "No folders found" : "No folders"}
+                                    </div>
+                                ) : (
+                                    filteredCollections.map((c) => {
+                                        const isSelected = currentCollectionId === c._id;
+                                        return (
+                                            <button
+                                                key={c._id}
+                                                type="button"
+                                                disabled={isMovingCollection}
+                                                onClick={() => handleMoveCollectionSelect(c._id)}
+                                                className={`w-full px-2 py-1.5 rounded-lg text-xs font-medium text-left transition-colors flex items-center justify-between cursor-pointer ${
+                                                    isSelected
+                                                        ? "bg-purple-600/15 text-purple-300 font-semibold"
+                                                        : isDark ? "hover:bg-white/5 text-gray-300" : "hover:bg-gray-100 text-gray-700"
+                                                }`}
+                                            >
+                                                <span className="flex items-center gap-2 min-w-0 flex-1">
+                                                    <CollectionIcon icon={c.icon} className="w-4 h-4 shrink-0" />
+                                                    <span className="truncate">{c.title}</span>
+                                                </span>
+                                                {isSelected && <span className="text-purple-400 font-bold text-xs ml-1.5">✓</span>}
+                                            </button>
+                                        );
+                                    })
+                                )}
+                            </div>
+                        </div>
                     )}
                 </div>
             </div>
