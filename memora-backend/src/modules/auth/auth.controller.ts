@@ -4,12 +4,22 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken"
 
 import type{ Request, Response } from "express";
+import { signupSchema,signinSchema } from "../../validators/auth.validator.js";
 
 
 export const signup=async(req:Request,res:Response)=>{
     try {
 
-        const {username,password} =req.body;
+        const parsed=signupSchema.safeParse(req.body);
+
+        if(!parsed.success){
+            return res.status(400).json({
+                message:parsed.error.issues[0]?.message ?? "Invalid input"
+            })
+        };
+
+        // typed + trimmed data, never the raw req.body
+        const {username,password}=parsed.data;
 
         const existingUser=await userModel.findOne({username});
         if(existingUser){
@@ -45,8 +55,16 @@ export const signup=async(req:Request,res:Response)=>{
 
 export const signin=async(req:Request,res:Response)=>{
     try {
-        const {username,password}=req.body;
-        
+        const parsed=signinSchema.safeParse(req.body);
+
+        if(!parsed.success){
+            return res.status(400).json({
+                message:parsed.error.issues[0]?.message ?? "Invalid input"
+            })
+        };
+
+        const {username,password}=parsed.data;
+
         const existingUser= await userModel.findOne({
             username
             
