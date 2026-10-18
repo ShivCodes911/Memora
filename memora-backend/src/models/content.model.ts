@@ -10,7 +10,7 @@ interface contentSchemaBody {
     collectionId:mongoose.Types.ObjectId | null;
 };
 
-const contentType = ["youtube", "twitter", "image", "video", "article", "audio", "pdf", "shared_brain"];
+export const contentType = ["youtube", "twitter", "image", "video", "article", "audio", "pdf", "shared_brain"] as const;
 
 
 const contentSchema=new mongoose.Schema <contentSchemaBody> ({
