@@ -19,3 +19,22 @@ export const addContentSchema=z.object({
         .nullable()
         .default(null)
 },{error:"Request body must be a JSON object"});
+
+export const importDriveFolderSchema=z.object({
+    url:z.string({error:"Google Drive folder URL is required"})
+        .trim()
+        .min(1,{error:"Google Drive folder URL is required"}),
+    collectionTitle:z.string()
+        .trim()
+        .max(200,{error:"Collection title must be at most 200 characters"})
+        .optional(),
+    apiKey:z.string()
+        .trim()
+        .optional(),
+    maxDepth:z.coerce.number()
+        .int()
+        .min(0,{error:"Depth must be at least 0"})
+        .max(3,{error:"Depth cannot exceed 3"})
+        .default(2)
+},{error:"Request body must be a JSON object"});
+

@@ -44,7 +44,13 @@ export function Signin() {
       const jwt = response.data.token;
       if (jwt) {
         localStorage.setItem("token", jwt);
-        navigate("/dashboard");
+        const params = new URLSearchParams(window.location.search);
+        const redirect = params.get("redirect");
+        if (redirect && redirect.startsWith("/")) {
+          navigate(redirect, { replace: true });
+        } else {
+          navigate("/dashboard", { replace: true });
+        }
       } else {
         setError("Invalid response from server.");
       }
@@ -155,7 +161,7 @@ export function Signin() {
         {/* Footer */}
         <div className="mt-8 text-center w-full">
           <p className="text-[14px] text-[#787774] mb-5">
-            New user? <Link to="/signup" className="text-[#2383e2] hover:underline">Sign up</Link>
+            New user? <Link to={`/signup${window.location.search}`} className="text-[#2383e2] hover:underline">Sign up</Link>
           </p>
           <div className="border-t border-[#e5e5e5] pt-4 w-full"></div>
           <p className="text-[12px] text-[#91918e] mt-4 max-w-[320px] mx-auto leading-relaxed">

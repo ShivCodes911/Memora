@@ -21,10 +21,11 @@ export interface TopBarProps {
   onSearchChange?: (query: string) => void;
   className?: string;
   isDark?: boolean;
-  title?: string;
+  title?: React.ReactNode;
   activeFilter?: string;
   onFilterChange?: (filterId: string) => void;
   filterCounts?: FilterCounts;
+  onOpenTree?: () => void;
 }
 
 const FILTER_OPTIONS = [
@@ -107,6 +108,7 @@ export function TopBar({
   activeFilter = "all",
   onFilterChange,
   filterCounts,
+  onOpenTree,
 }: TopBarProps) {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const filterRef = useRef<HTMLDivElement>(null);
@@ -138,9 +140,11 @@ export function TopBar({
             isOpen={isSidebarOpen}
           />
         </div>
-        <span className="text-sm font-medium text-gray-400 opacity-75 hover:opacity-100 transition-all whitespace-nowrap">
+        <div className={`text-sm font-medium transition-all whitespace-nowrap flex items-center gap-1.5 ${
+          isDark ? "text-gray-400 opacity-75 hover:opacity-100" : "text-gray-700 hover:text-gray-900"
+        }`}>
           {title || "Dashboard"}
-        </span>
+        </div>
       </div>
 
       {/* Center / Rest of Top Bar: Empty and Distraction-Free */}
@@ -233,7 +237,7 @@ export function TopBar({
 
                 {FILTER_OPTIONS.map((opt) => {
                   const isSelected = activeFilter === opt.id;
-                  const count = filterCounts ? (filterCounts as Record<string, number>)[opt.id] : undefined;
+                  const count = filterCounts ? (filterCounts as unknown as Record<string, number>)[opt.id] : undefined;
                   return (
                     <button
                       key={opt.id}
@@ -280,6 +284,25 @@ export function TopBar({
               </div>
             )}
           </div>
+        )}
+
+        {onOpenTree && (
+          <button
+            type="button"
+            onClick={onOpenTree}
+            className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer border flex items-center gap-1.5 ${
+              isDark 
+                ? "bg-[#202020] hover:bg-[#262626] text-gray-300 hover:text-white border-white/5" 
+                : "bg-white hover:bg-gray-50 text-gray-700 hover:text-gray-900 border-gray-200 shadow-sm"
+            }`}
+            title="Open Folder Tree Directory"
+          >
+            <svg className="w-3.5 h-3.5 text-purple-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 2H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z" />
+              <path d="M2 10h20" />
+            </svg>
+            <span className="hidden sm:inline">Tree</span>
+          </button>
         )}
 
         {!title && onShareBrain && (

@@ -6,8 +6,9 @@ import type{Request,Response} from "express";
 import linkModel from "../../models/link.model.js";
 import { hash } from "../../utils/hashingLink.util.js";
 import { toWebLink } from "../../utils/validateLink.util.js";
-import { addContentSchema } from "../../validators/content.validator.js";
+import { addContentSchema, importDriveFolderSchema } from "../../validators/content.validator.js";
 import userModel from "../../models/user.model.js";
+import { extractDriveFolderId, fetchDriveFolderFiles } from "../../utils/googleDrive.util.js";
 
 export const addContent=async(req:Request,res:Response)=>{
     try {
@@ -49,9 +50,32 @@ export const addContent=async(req:Request,res:Response)=>{
             };
         };
 
-        const content=await contentModel.create({
-            link:webLink,
-            type,
+        let resolvedType = type;
+        const linkLower = (link || "").toLowerCase();
+        const titleLower = (title || "").toLowerCase();
+        if (
+            resolvedType === "article" &&
+            (
+                linkLower.includes(".pdf") ||
+                linkLower.includes("/pdf") ||
+                linkLower.includes("arxiv.org/pdf") ||
+                linkLower.includes("arxiv.org/abs") ||
+                linkLower.includes("drive.google.com") ||
+                linkLower.includes("docs.google.com") ||
+                linkLower.includes("format=pdf") ||
+                linkLower.includes("download=pdf") ||
+                linkLower.includes("type=pdf") ||
+                linkLower.includes("openreview.net/pdf") ||
+                titleLower.endsWith(".pdf") ||
+                titleLower.includes(".pdf")
+            )
+        ) {
+            resolvedType = "pdf";
+        }
+
+        const content = await contentModel.create({
+            link: webLink,
+            type: resolvedType,
             title,
             description,
             userId,
@@ -334,8 +358,9 @@ export const fetchSharedContent=async(req:Request,res:Response)=>{
             //for other users
 
 
-            const content= await contentModel.find({
-                userId:link.userId
+            const content = await contentModel.find({
+                userId: link.userId,
+                type: { $ne: "shared_brain" }
             }).sort({ _id: 1 });
 
             
@@ -381,19 +406,41 @@ export const fetchMetadata = async (req: Request, res: Response) => {
         const parsedUrl = new URL(targetUrl);
         const favicon = `https://www.google.com/s2/favicons?domain=${parsedUrl.hostname}&sz=64`;
 
-        // Check if URL is a direct PDF link
+        // Check if URL is a direct PDF or Google Drive/arXiv document link
         const pathParts = parsedUrl.pathname.split("/").filter(Boolean);
         const lastSegment = pathParts[pathParts.length - 1] || "";
-        const isPdfUrl = targetUrl.toLowerCase().includes(".pdf") || lastSegment.toLowerCase().endsWith(".pdf");
+        const isPdfUrl = 
+            targetUrl.toLowerCase().includes(".pdf") || 
+            lastSegment.toLowerCase().endsWith(".pdf") ||
+            targetUrl.toLowerCase().includes("arxiv.org/pdf") ||
+            targetUrl.toLowerCase().includes("arxiv.org/abs") ||
+            targetUrl.toLowerCase().includes("openreview.net/pdf") ||
+            targetUrl.toLowerCase().includes("format=pdf") ||
+            targetUrl.toLowerCase().includes("download=pdf") ||
+            targetUrl.toLowerCase().includes("type=pdf");
 
-        if (isPdfUrl) {
-            const cleanName = lastSegment ? decodeURIComponent(lastSegment) : `PDF Document (${parsedUrl.hostname})`;
+        const isGoogleDriveDoc = parsedUrl.hostname.includes("drive.google.com") || parsedUrl.hostname.includes("docs.google.com");
+
+        if (isPdfUrl || isGoogleDriveDoc) {
+            let cleanName = lastSegment ? decodeURIComponent(lastSegment) : `PDF Document (${parsedUrl.hostname})`;
+            let driveImage = "";
+
+            if (isGoogleDriveDoc) {
+                const gdMatch = targetUrl.match(/(?:drive\.google\.com\/file\/d\/|drive\.google\.com\/.*[?&]id=)([a-zA-Z0-9_-]+)/);
+                if (gdMatch && gdMatch[1]) {
+                    driveImage = `https://drive.google.com/thumbnail?id=${gdMatch[1]}&sz=w800`;
+                }
+                cleanName = cleanName === "view" || !cleanName ? "Google Drive PDF Document" : cleanName;
+            }
+
             return res.status(200).json({
                 title: cleanName,
                 description: "PDF Document",
-                image: "",
+                image: driveImage,
                 favicon,
-                domain: parsedUrl.hostname
+                domain: parsedUrl.hostname,
+                isPdf: true,
+                type: "pdf"
             });
         }
 
@@ -415,7 +462,9 @@ export const fetchMetadata = async (req: Request, res: Response) => {
                 description: "PDF Document",
                 image: "",
                 favicon,
-                domain: parsedUrl.hostname
+                domain: parsedUrl.hostname,
+                isPdf: true,
+                type: "pdf"
             });
         }
 
@@ -451,12 +500,16 @@ export const fetchMetadata = async (req: Request, res: Response) => {
             }
         }
 
+        const isDetectedPdf = title.toLowerCase().includes(".pdf") || description.toLowerCase().includes("pdf document");
+
         return res.status(200).json({
             title,
             description: description.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"'),
             image,
             favicon,
-            domain: parsedUrl.hostname
+            domain: parsedUrl.hostname,
+            isPdf: isDetectedPdf,
+            type: isDetectedPdf ? "pdf" : "article"
         });
     } catch (error) {
         console.error("Fetch metadata error:", error);
@@ -478,4 +531,315 @@ export const fetchMetadata = async (req: Request, res: Response) => {
         });
     }
 };
+
+// Save / clone an entire shared brain (all cards and collections) into the user's vault
+export const saveSharedBrainContent = async (req: Request, res: Response) => {
+    try {
+        const userId = req.userId;
+        if (!userId) {
+            return res.status(401).json({ message: "Unauthorized" });
+        }
+
+        const shareLink = req.params.shareLink;
+        if (!shareLink) {
+            return res.status(400).json({ message: "Provide a valid share link" });
+        }
+
+        const link = await linkModel.findOne({ hash: shareLink });
+        if (!link) {
+            return res.status(404).json({ message: "Brain collection not found or link is private." });
+        }
+
+        const ownerUser = await userModel.findById(link.userId).select("username");
+        if (!ownerUser) {
+            return res.status(404).json({ message: "Owner user not found" });
+        }
+
+        const ownerUserId = link.userId;
+        const targetUserId = new mongoose.Types.ObjectId(userId);
+
+        // If user is owner saving their own brain:
+        if (ownerUserId.toString() === userId.toString()) {
+            return res.status(200).json({
+                message: "This is your own brain! All memories are already in your vault.",
+                isOwner: true,
+                savedCount: 0
+            });
+        }
+
+        // 1. Prevent duplicate saves: check if user already saved this brain
+        const existingBrainEntry = await contentModel.findOne({
+            userId: targetUserId,
+            type: "shared_brain",
+            $or: [
+                { link: `/share/${shareLink}` },
+                { link: { $regex: new RegExp(`share/${shareLink}$`) } },
+                { title: `${ownerUser.username}'s Brain` }
+            ]
+        });
+
+        if (existingBrainEntry) {
+            return res.status(200).json({
+                message: `${ownerUser.username}'s Brain is already in your shared brains!`,
+                alreadySaved: true,
+                savedCount: 0
+            });
+        }
+
+        // 2. Create the single "shared_brain" connection entry
+        await contentModel.create({
+            userId: targetUserId,
+            type: "shared_brain",
+            title: `${ownerUser.username}'s Brain`,
+            link: `/share/${shareLink}`,
+            description: `Public Knowledge Collection shared by ${ownerUser.username}`,
+            tags: []
+        });
+
+        // 2. Fetch all memories belonging to the shared user (excluding shared_brain pointers)
+        const sourceContents = await contentModel.find({
+            userId: ownerUserId,
+            type: { $ne: "shared_brain" }
+        }).sort({ _id: 1 });
+
+        // Map original collectionIds to new/existing collectionIds for the target user
+        const collectionMap = new Map<string, mongoose.Types.ObjectId>();
+
+        let clonedCount = 0;
+        for (const item of sourceContents) {
+            try {
+                let targetCollectionId: mongoose.Types.ObjectId | null = null;
+
+                if (item.collectionId) {
+                    const sourceColIdStr = item.collectionId.toString();
+                    if (collectionMap.has(sourceColIdStr)) {
+                        targetCollectionId = collectionMap.get(sourceColIdStr)!;
+                    } else {
+                        const sourceCol = await collectionModel.findById(item.collectionId);
+                        if (sourceCol) {
+                            let targetCol = await collectionModel.findOne({
+                                userId: targetUserId,
+                                title: sourceCol.title
+                            });
+                            if (!targetCol) {
+                                targetCol = await collectionModel.create({
+                                    userId: targetUserId,
+                                    title: sourceCol.title,
+                                    icon: sourceCol.icon || "📁"
+                                });
+                            }
+                            targetCollectionId = targetCol._id as mongoose.Types.ObjectId;
+                            collectionMap.set(sourceColIdStr, targetCol._id as mongoose.Types.ObjectId);
+                        }
+                    }
+                }
+
+                // Check if user already has this link saved in this collection or general vault
+                const existing = await contentModel.findOne({
+                    userId: targetUserId,
+                    link: item.link,
+                    collectionId: targetCollectionId
+                });
+
+                if (!existing) {
+                    await contentModel.create({
+                        userId: targetUserId,
+                        link: item.link,
+                        type: item.type,
+                        title: item.title,
+                        description: item.description || "",
+                        tags: item.tags || [],
+                        collectionId: targetCollectionId
+                    });
+                    clonedCount++;
+                }
+            } catch (err) {
+                console.error("Error cloning memory from shared brain:", err);
+            }
+        }
+
+        const message = clonedCount > 0
+            ? `Saved ${ownerUser.username}'s Brain with ${clonedCount} memories to your vault! 🎉`
+            : `All memories from ${ownerUser.username}'s Brain are already up to date in your vault!`;
+
+        return res.status(200).json({
+            message,
+            savedCount: clonedCount,
+            totalSourceItems: sourceContents.length
+        });
+    } catch (error) {
+        console.error("saveSharedBrainContent failed", error);
+        return res.status(500).json({ message: "Internal server error" });
+    }
+};
+
+/**
+ * Ingests an entire Google Drive folder (and nested subfolders) into Memora,
+ * automatically creating a dedicated Collection and mapping all files to memories.
+ */
+export const importDriveFolder = async (req: Request, res: Response) => {
+    try {
+        const userId = req.userId;
+        if (!userId) {
+            return res.status(401).json({ message: "Unauthorized" });
+        }
+
+        const parsed = importDriveFolderSchema.safeParse(req.body);
+        if (!parsed.success) {
+            return res.status(400).json({
+                message: parsed.error.issues[0]?.message ?? "Invalid input"
+            });
+        }
+
+        const { url, collectionTitle, apiKey, maxDepth } = parsed.data;
+
+        const folderId = extractDriveFolderId(url);
+        if (!folderId) {
+            return res.status(400).json({
+                message: "Invalid Google Drive folder link. Please provide a link formatted as https://drive.google.com/drive/folders/YOUR_FOLDER_ID"
+            });
+        }
+
+        // Fetch folder contents (supports both zero-API-key public scraping and official Drive API v3)
+        const driveResult = await fetchDriveFolderFiles(folderId, apiKey, maxDepth);
+        const resolvedTitle = collectionTitle || driveResult.folderName || "Google Drive Folder";
+
+        // 1. Create or find root Collection for this folder
+        let collection = await collectionModel.findOne({
+            userId,
+            title: resolvedTitle,
+            parentId: null
+        });
+
+        if (!collection) {
+            collection = await collectionModel.create({
+                userId,
+                title: resolvedTitle,
+                icon: "📁",
+                parentId: null
+            });
+        }
+
+        const rootCollectionId = collection._id as mongoose.Types.ObjectId;
+
+        // 2. Map folder paths to Collection ObjectIds
+        const pathMap = new Map<string, mongoose.Types.ObjectId>();
+        pathMap.set("", rootCollectionId);
+
+        // Sort folders by depth so parent folders are created before their children
+        const sortedFolders = (driveResult.folders || []).slice().sort((a, b) => {
+            const depthA = a.path.split("/").length;
+            const depthB = b.path.split("/").length;
+            return depthA - depthB;
+        });
+
+        for (const folder of sortedFolders) {
+            const parentColId = pathMap.get(folder.parentPath) || rootCollectionId;
+            let subCol = await collectionModel.findOne({
+                userId,
+                title: folder.name,
+                parentId: parentColId
+            });
+
+            if (!subCol) {
+                subCol = await collectionModel.create({
+                    userId,
+                    title: folder.name,
+                    icon: "📁",
+                    parentId: parentColId
+                });
+            }
+
+            pathMap.set(folder.path, subCol._id as mongoose.Types.ObjectId);
+        }
+
+        // 3. Collect existing memories across all touched collections to deduplicate
+        const allCollectionIds = Array.from(pathMap.values());
+        const existingDocs = await contentModel.find({
+            userId,
+            collectionId: { $in: allCollectionIds }
+        }).select("link collectionId").lean();
+
+        const existingSet = new Set(existingDocs.map((d) => `${d.collectionId?.toString() ?? ""}:${d.link}`));
+        const seenInBatch = new Set<string>();
+        const docsToInsert = [];
+        let skippedCount = 0;
+
+        for (const file of driveResult.files) {
+            const folderPath = (file.subfolderPath || "").replace(/\/$/, "");
+            const targetCollectionId = pathMap.get(folderPath) || rootCollectionId;
+            const dedupeKey = `${targetCollectionId.toString()}:${file.link}`;
+
+            if (existingSet.has(dedupeKey) || seenInBatch.has(dedupeKey)) {
+                skippedCount++;
+                continue;
+            }
+            seenInBatch.add(dedupeKey);
+
+            const description = folderPath 
+                ? `Imported from Google Drive: ${resolvedTitle} / ${folderPath}`
+                : `Imported from Google Drive Folder: ${resolvedTitle}`;
+
+            docsToInsert.push({
+                userId,
+                link: file.link,
+                type: file.type,
+                title: file.name,
+                description,
+                tags: [],
+                collectionId: targetCollectionId
+            });
+        }
+
+        let insertedDocs: Array<{ _id: unknown; title: string; type: string; link: string }> = [];
+        if (docsToInsert.length > 0) {
+            try {
+                const result = await contentModel.insertMany(docsToInsert, { ordered: false });
+                insertedDocs = result;
+            } catch (bulkErr: unknown) {
+                if (bulkErr && typeof bulkErr === "object" && "insertedDocs" in bulkErr && Array.isArray((bulkErr as { insertedDocs: unknown[] }).insertedDocs)) {
+                    insertedDocs = (bulkErr as { insertedDocs: Array<{ _id: unknown; title: string; type: string; link: string }> }).insertedDocs;
+                } else {
+                    console.error("importDriveFolder bulk insert partial error:", bulkErr);
+                }
+            }
+        }
+
+        const importedCount = insertedDocs.length;
+
+        let message = "";
+        if (importedCount > 0) {
+            message = `Successfully imported ${importedCount} file${importedCount === 1 ? "" : "s"} across folder tree into "${resolvedTitle}"! 🎉`;
+        } else if (skippedCount > 0) {
+            message = `All ${skippedCount} file${skippedCount === 1 ? "" : "s"} in "${resolvedTitle}" are already in your vault!`;
+        } else {
+            message = `No files found to import in "${resolvedTitle}".`;
+        }
+
+        return res.status(200).json({
+            message,
+            collection,
+            importedCount,
+            skippedCount,
+            totalFound: driveResult.files.length,
+            subfoldersScanned: driveResult.subfolderCount,
+            files: insertedDocs.map(d => ({
+                _id: d._id,
+                title: d.title,
+                type: d.type,
+                link: d.link
+            }))
+        });
+    } catch (error: unknown) {
+        console.error("importDriveFolder failed", error);
+        const errMsg = error instanceof Error ? error.message : "Failed to import Google Drive folder";
+        return res.status(400).json({
+            message: errMsg.includes("404") || errMsg.includes("403") || errMsg.includes("permissions") || errMsg.includes("No files could be retrieved")
+                ? errMsg
+                : "Failed to import Google Drive folder. Please ensure the link is public ('Anyone with the link can view')."
+        });
+    }
+};
+
+
 

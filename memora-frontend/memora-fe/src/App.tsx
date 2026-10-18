@@ -4,7 +4,7 @@ import { Signin } from "./pages/signin";
 import { BrowserRouter,Routes,Route } from "react-router-dom";
 import { Landing } from "./pages/landing";
 import { SharedPage } from "./pages/sharedPage";
-
+import { SharedCollectionPage } from "./pages/sharedCollectionPage";
 
 // App.tsx has been made bulkier that is why , we have moved the dashboard page in pages folder seprately
 
@@ -15,6 +15,7 @@ import { SharedPage } from "./pages/sharedPage";
     <Route path="/signup" element={<Signup/>} />
     <Route path="/signin" element={<Signin/>} />
     <Route path="/dashboard" element={<Dashboard/>} />
+    <Route path="/share/c/:shareHash" element={<SharedCollectionPage/>} />
     <Route path="/share/:shareLink" element={<SharedPage/>} />
     <Route path="*" element={
       <div className="min-h-screen bg-[#09090b] flex items-center justify-center text-zinc-400 font-sans">

@@ -30,19 +30,23 @@ export function Signup() {
       setError("Please enter a username.");
       return;
     }
+    if (username.trim().length < 3) {
+      setError("Username must be at least 3 characters.");
+      return;
+    }
     if (!password) {
       setError("Please enter a password.");
       return;
     }
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters.");
+    if (password.length < 8) {
+      setError("Password must be at least 8 characters.");
       return;
     }
     try {
       setLoading(true);
       setError(null);
       await axios.post(`${BACKEND_URL}/api/v1/auth/signup`, { username, password });
-      navigate("/signin");
+      navigate(`/signin${window.location.search}`);
     } catch (err: any) {
       setError(err?.response?.data?.message || "Signup failed. Please try again.");
     } finally {
@@ -165,7 +169,7 @@ export function Signup() {
         {/* Footer */}
         <div className="mt-5 text-center w-full">
           <p className="text-[14px] text-[#787774] mb-5">
-            Existing user? <Link to="/signin" className="text-[#37352f] underline hover:text-[#2383e2]">Log in</Link>
+            Existing user? <Link to={`/signin${window.location.search}`} className="text-[#37352f] underline hover:text-[#2383e2]">Log in</Link>
           </p>
           <p className="text-[12px] text-[#91918e] max-w-[320px] mx-auto leading-relaxed">
             By continuing, you acknowledge that you understand and agree to the{" "}
