@@ -6,7 +6,7 @@ import type{Request,Response} from "express";
 import linkModel from "../../models/link.model.js";
 import { hash } from "../../utils/hashingLink.util.js";
 import { toWebLink } from "../../utils/validateLink.util.js";
-import { addContentSchema } from "../../validators/content.validator.js";
+import { addContentSchema, importDriveFolderSchema } from "../../validators/content.validator.js";
 import userModel from "../../models/user.model.js";
 import { extractDriveFolderId, fetchDriveFolderFiles } from "../../utils/googleDrive.util.js";
 
@@ -684,10 +684,14 @@ export const importDriveFolder = async (req: Request, res: Response) => {
             return res.status(401).json({ message: "Unauthorized" });
         }
 
-        const { url, collectionTitle, apiKey, maxDepth = 2 } = req.body;
-        if (!url || typeof url !== "string") {
-            return res.status(400).json({ message: "Google Drive folder URL is required." });
+        const parsed = importDriveFolderSchema.safeParse(req.body);
+        if (!parsed.success) {
+            return res.status(400).json({
+                message: parsed.error.issues[0]?.message ?? "Invalid input"
+            });
         }
+
+        const { url, collectionTitle, apiKey, maxDepth } = parsed.data;
 
         const folderId = extractDriveFolderId(url);
         if (!folderId) {
@@ -697,8 +701,8 @@ export const importDriveFolder = async (req: Request, res: Response) => {
         }
 
         // Fetch folder contents (supports both zero-API-key public scraping and official Drive API v3)
-        const driveResult = await fetchDriveFolderFiles(folderId, apiKey, Number(maxDepth) || 2);
-        const resolvedTitle = (collectionTitle || "").trim() || driveResult.folderName || "Google Drive Folder";
+        const driveResult = await fetchDriveFolderFiles(folderId, apiKey, maxDepth);
+        const resolvedTitle = collectionTitle || driveResult.folderName || "Google Drive Folder";
 
         // 1. Create or find root Collection for this folder
         let collection = await collectionModel.findOne({
@@ -756,7 +760,7 @@ export const importDriveFolder = async (req: Request, res: Response) => {
             collectionId: { $in: allCollectionIds }
         }).select("link collectionId").lean();
 
-        const existingSet = new Set(existingDocs.map((d: any) => `${d.collectionId?.toString() || ""}:${d.link}`));
+        const existingSet = new Set(existingDocs.map((d) => `${d.collectionId?.toString() ?? ""}:${d.link}`));
         const seenInBatch = new Set<string>();
         const docsToInsert = [];
         let skippedCount = 0;
@@ -787,15 +791,16 @@ export const importDriveFolder = async (req: Request, res: Response) => {
             });
         }
 
-        let insertedDocs: any[] = [];
+        let insertedDocs: Array<{ _id: unknown; title: string; type: string; link: string }> = [];
         if (docsToInsert.length > 0) {
             try {
-                insertedDocs = await contentModel.insertMany(docsToInsert, { ordered: false });
-            } catch (bulkErr: any) {
-                if (bulkErr?.insertedDocs && Array.isArray(bulkErr.insertedDocs)) {
-                    insertedDocs = bulkErr.insertedDocs;
+                const result = await contentModel.insertMany(docsToInsert, { ordered: false });
+                insertedDocs = result;
+            } catch (bulkErr: unknown) {
+                if (bulkErr && typeof bulkErr === "object" && "insertedDocs" in bulkErr && Array.isArray((bulkErr as { insertedDocs: unknown[] }).insertedDocs)) {
+                    insertedDocs = (bulkErr as { insertedDocs: Array<{ _id: unknown; title: string; type: string; link: string }> }).insertedDocs;
                 } else {
-                    console.error("Bulk insert partial error:", bulkErr);
+                    console.error("importDriveFolder bulk insert partial error:", bulkErr);
                 }
             }
         }
@@ -825,10 +830,13 @@ export const importDriveFolder = async (req: Request, res: Response) => {
                 link: d.link
             }))
         });
-    } catch (error: any) {
-        console.error("importDriveFolder error:", error);
+    } catch (error: unknown) {
+        console.error("importDriveFolder failed", error);
+        const errMsg = error instanceof Error ? error.message : "Failed to import Google Drive folder";
         return res.status(400).json({
-            message: error?.message || "Failed to import Google Drive folder. Please ensure the link is public ('Anyone with the link can view')."
+            message: errMsg.includes("404") || errMsg.includes("403") || errMsg.includes("permissions") || errMsg.includes("No files could be retrieved")
+                ? errMsg
+                : "Failed to import Google Drive folder. Please ensure the link is public ('Anyone with the link can view')."
         });
     }
 };

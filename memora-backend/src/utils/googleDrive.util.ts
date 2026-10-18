@@ -1,5 +1,3 @@
-import vm from "node:vm";
-
 export interface DriveParsedFile {
     id: string;
     name: string;
@@ -22,6 +20,17 @@ export interface DriveFolderResult {
     files: DriveParsedFile[];
     folders: DriveFolderInfo[];
     subfolderCount: number;
+}
+
+interface DriveApiFile {
+    id?: string;
+    name?: string;
+    mimeType?: string;
+    webViewLink?: string;
+}
+
+interface DriveApiListResponse {
+    files?: DriveApiFile[];
 }
 
 /**
@@ -97,9 +106,9 @@ export function mapMimeToContentType(mimeType: string, fileName: string): "pdf" 
 /**
  * Helper to recursively search an object/array for string values matching specific criteria
  */
-function findStringsInItem(item: any): string[] {
+function findStringsInItem(item: unknown): string[] {
     const result: string[] = [];
-    function search(node: any) {
+    function search(node: unknown) {
         if (!node) return;
         if (typeof node === "string") result.push(node);
         else if (Array.isArray(node)) node.forEach(search);
@@ -109,9 +118,58 @@ function findStringsInItem(item: any): string[] {
 }
 
 /**
+ * Safely extracts a balanced JSON array from raw text without eval or node:vm
+ */
+function extractJsonArray(text: string, startIndex: number): unknown[] | null {
+    let depth = 0;
+    let inString = false;
+    let quoteChar = "";
+    let escape = false;
+    let start = -1;
+
+    for (let i = startIndex; i < text.length; i++) {
+        const char = text[i];
+        if (escape) {
+            escape = false;
+            continue;
+        }
+        if (char === "\\") {
+            escape = true;
+            continue;
+        }
+        if ((char === '"' || char === "'") && !inString) {
+            inString = true;
+            quoteChar = char;
+            continue;
+        } else if (char === quoteChar && inString) {
+            inString = false;
+            quoteChar = "";
+            continue;
+        }
+        if (!inString) {
+            if (char === "[") {
+                if (depth === 0) start = i;
+                depth++;
+            } else if (char === "]") {
+                depth--;
+                if (depth === 0 && start !== -1) {
+                    try {
+                        const slice = text.slice(start, i + 1);
+                        return JSON.parse(slice) as unknown[];
+                    } catch {
+                        return null;
+                    }
+                }
+            }
+        }
+    }
+    return null;
+}
+
+/**
  * Parses files and subfolders from Google Drive public web HTML using AF_initDataCallback
  */
-function parseDriveHtml(html: string): { folderName: string; rawItems: any[] } {
+function parseDriveHtml(html: string): { folderName: string; rawItems: unknown[] } {
     let folderName = "Google Drive Folder";
 
     // Extract title: e.g. "<title>My Notes – Google Drive</title>"
@@ -123,44 +181,30 @@ function parseDriveHtml(html: string): { folderName: string; rawItems: any[] } {
         }
     }
 
-    const rawItems: any[] = [];
+    const rawItems: unknown[] = [];
     const callbacks = [...html.matchAll(/AF_initDataCallback\s*\(\s*({[\s\S]*?})\s*\);/g)];
 
     for (const match of callbacks) {
         const rawCallback = match[1];
         if (!rawCallback) continue;
 
-        let parsedData: any = null;
+        const dataIdx = rawCallback.indexOf("data:");
+        if (dataIdx === -1) continue;
 
-        // Try VM evaluation first (robust against regex property ordering)
-        try {
-            const evaluated = vm.runInNewContext(`(${rawCallback})`, {});
-            if (evaluated && evaluated.data) {
-                parsedData = evaluated.data;
-            }
-        } catch {
-            // Fallback to JSON regex extraction
-            const dataMatch = rawCallback.match(/data:\s*(\[[\s\S]*?\])\s*(?:,\s*sideChannel:|\s*}\s*$)/);
-            if (dataMatch && dataMatch[1]) {
-                try {
-                    parsedData = JSON.parse(dataMatch[1]);
-                } catch {}
-            }
-        }
-
+        const parsedData = extractJsonArray(rawCallback, dataIdx);
         if (!parsedData) continue;
 
         // Generic search for any array that contains Drive items
-        function searchForItems(node: any): any[] | null {
+        function searchForItems(node: unknown): unknown[] | null {
             if (!node || !Array.isArray(node)) return null;
 
-            const isItemList = node.length > 0 && node.every((it: any) => {
+            const isItemList = node.length > 0 && node.every((it: unknown) => {
                 if (!Array.isArray(it) || !Array.isArray(it[0])) return false;
                 const candId = it[0][1];
                 return typeof candId === "string" && /^[a-zA-Z0-9_-]{20,60}$/.test(candId);
             });
 
-            if (isItemList) return node;
+            if (isItemList) return node as unknown[];
 
             for (const child of node) {
                 if (Array.isArray(child)) {
@@ -184,13 +228,14 @@ function parseDriveHtml(html: string): { folderName: string; rawItems: any[] } {
 /**
  * Extracts parsed file/subfolder details from a single raw item node
  */
-function extractItemMetadata(item: any): { id: string; name: string; mime: string; isFolder: boolean } | null {
+function extractItemMetadata(item: unknown): { id: string; name: string; mime: string; isFolder: boolean } | null {
     if (!item || !Array.isArray(item)) return null;
 
-    // File/Folder ID is primarily located at item[0][1]
-    let id: string = item[0]?.[1];
-    if (!id || typeof id !== "string" || !/^[a-zA-Z0-9_-]{20,60}$/.test(id)) {
-        // Fallback: search strings in item
+    const itemArr = item as unknown[];
+    const firstSub = Array.isArray(itemArr[0]) ? (itemArr[0] as unknown[]) : null;
+    let id: string = typeof firstSub?.[1] === "string" ? firstSub[1] : "";
+
+    if (!id || !/^[a-zA-Z0-9_-]{20,60}$/.test(id)) {
         const strings = findStringsInItem(item);
         const candId = strings.find(s => /^[a-zA-Z0-9_-]{25,50}$/.test(s) && !s.includes(".") && !s.includes("/"));
         if (candId) id = candId;
@@ -198,8 +243,7 @@ function extractItemMetadata(item: any): { id: string; name: string; mime: strin
 
     if (!id) return null;
 
-    // MIME type is primarily at item[4]
-    let mime: string = typeof item[4] === "string" ? item[4] : "";
+    let mime: string = typeof itemArr[4] === "string" ? itemArr[4] : "";
     if (!mime || !mime.includes("/")) {
         const strings = findStringsInItem(item);
         const candMime = strings.find(s => s.includes("/") && (s.startsWith("application/") || s.startsWith("text/") || s.startsWith("image/") || s.startsWith("video/")));
@@ -208,11 +252,14 @@ function extractItemMetadata(item: any): { id: string; name: string; mime: strin
 
     const isFolder = mime === "application/vnd.google-apps.folder";
 
-    // File name is at item[35][0][0][0] or item[24][2][0][2][1][0][0][0]
-    let name: string = item[35]?.[0]?.[0]?.[0] || item[24]?.[2]?.[0]?.[2]?.[1]?.[0]?.[0]?.[0];
-    if (!name || typeof name !== "string") {
+    const item35 = Array.isArray(itemArr[35]) ? (itemArr[35] as unknown[]) : null;
+    const item35_0 = Array.isArray(item35?.[0]) ? (item35[0] as unknown[]) : null;
+    const item35_0_0 = Array.isArray(item35_0?.[0]) ? (item35_0[0] as unknown[]) : null;
+    const name35 = typeof item35_0_0?.[0] === "string" ? item35_0_0[0] : "";
+
+    let name: string = name35;
+    if (!name) {
         const strings = findStringsInItem(item);
-        // Find a string that looks like a valid filename or title
         const candName = strings.find(s => 
             s !== id && 
             s !== mime && 
@@ -232,30 +279,30 @@ function extractItemMetadata(item: any): { id: string; name: string; mime: strin
  * Fetch Google Drive folder files using Google Drive API v3 (if API key available)
  */
 async function fetchViaDriveApi(folderId: string, apiKey: string): Promise<DriveFolderResult> {
-    // 1. Get folder metadata
     let folderName = "Google Drive Folder";
     try {
-        const metaRes = await fetch(`https://www.googleapis.com/drive/v3/files/${folderId}?fields=name&key=${apiKey}`);
+        const metaRes = await fetch(`https://www.googleapis.com/drive/v3/files/${folderId}?fields=name&key=${apiKey}`, {
+            signal: AbortSignal.timeout(10000)
+        });
         if (metaRes.ok) {
-            const metaData: any = await metaRes.json();
+            const metaData = await metaRes.json() as { name?: string };
             if (metaData?.name) folderName = metaData.name;
         }
     } catch {
         // Fallback to default
     }
 
-    // 2. Query folder contents
     const query = encodeURIComponent(`'${folderId}' in parents and trashed = false`);
     const fields = encodeURIComponent("files(id,name,mimeType,webViewLink)");
     const listUrl = `https://www.googleapis.com/drive/v3/files?q=${query}&fields=${fields}&pageSize=100&key=${apiKey}`;
 
-    const listRes = await fetch(listUrl);
+    const listRes = await fetch(listUrl, { signal: AbortSignal.timeout(10000) });
     if (!listRes.ok) {
         throw new Error(`Google Drive API error: ${listRes.status} ${listRes.statusText}`);
     }
 
-    const listData: any = await listRes.json();
-    const driveFiles: any[] = listData?.files || [];
+    const listData = await listRes.json() as DriveApiListResponse;
+    const driveFiles = listData?.files || [];
 
     const files: DriveParsedFile[] = [];
     let subfolderCount = 0;
@@ -267,11 +314,11 @@ async function fetchViaDriveApi(folderId: string, apiKey: string): Promise<Drive
         }
 
         files.push({
-            id: f.id,
+            id: f.id || "",
             name: f.name || "Drive File",
             mimeType: f.mimeType || "",
             link: f.webViewLink || `https://drive.google.com/file/d/${f.id}/view?usp=sharing`,
-            type: mapMimeToContentType(f.mimeType, f.name || "")
+            type: mapMimeToContentType(f.mimeType || "", f.name || "")
         });
     }
 
@@ -292,7 +339,6 @@ export async function fetchDriveFolderFiles(
     apiKey?: string,
     maxDepth = 2
 ): Promise<DriveFolderResult> {
-    // If API key is provided, prefer the official Drive API v3
     const resolvedApiKey = apiKey || process.env.GOOGLE_DRIVE_API_KEY;
     if (resolvedApiKey) {
         try {
@@ -302,15 +348,15 @@ export async function fetchDriveFolderFiles(
         }
     }
 
-    // Web Scraper approach (Zero API key needed for public folders)
     const visitedFolders = new Set<string>();
     const allFiles: DriveParsedFile[] = [];
     const allFolders: DriveFolderInfo[] = [];
     let rootFolderName = "Google Drive Folder";
     let totalSubfolders = 0;
+    const MAX_TOTAL_FOLDERS = 20;
 
     async function crawlFolder(currentId: string, depth: number, pathPrefix = "", parentPath = ""): Promise<void> {
-        if (depth > maxDepth || visitedFolders.has(currentId)) return;
+        if (depth > maxDepth || visitedFolders.has(currentId) || visitedFolders.size >= MAX_TOTAL_FOLDERS) return;
         visitedFolders.add(currentId);
 
         const url = `https://drive.google.com/drive/folders/${currentId}`;
@@ -319,7 +365,8 @@ export async function fetchDriveFolderFiles(
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
                 "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
                 "Accept-Language": "en-US,en;q=0.9"
-            }
+            },
+            signal: AbortSignal.timeout(10000)
         });
 
         if (!res.ok) {
@@ -355,7 +402,7 @@ export async function fetchDriveFolderFiles(
                     parentPath: parentPath
                 });
 
-                if (depth < maxDepth) {
+                if (depth < maxDepth && visitedFolders.size < MAX_TOTAL_FOLDERS) {
                     subfoldersToCrawl.push({ id: meta.id, name: meta.name, path: folderPath });
                 }
             } else {
@@ -370,8 +417,8 @@ export async function fetchDriveFolderFiles(
             }
         }
 
-        // Recursively crawl subfolders up to maxDepth (limit up to 50 subfolders per folder for safety)
         for (const sub of subfoldersToCrawl.slice(0, 50)) {
+            if (visitedFolders.size >= MAX_TOTAL_FOLDERS) break;
             const nextPrefix = `${sub.path}/`;
             try {
                 await crawlFolder(sub.id, depth + 1, nextPrefix, sub.path);

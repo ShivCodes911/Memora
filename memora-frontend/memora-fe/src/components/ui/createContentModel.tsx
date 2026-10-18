@@ -90,6 +90,10 @@ export function CreateContentModal({
     const [fetchingMeta, setFetchingMeta] = useState(false);
     const [titleManuallyEdited, setTitleManuallyEdited] = useState(false);
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+    const [titleText, setTitleText] = useState("");
+    const [descText, setDescText] = useState("");
+    const [detectedTypeLabel, setDetectedTypeLabel] = useState<string | null>(null);
+    const [isLinkValid, setIsLinkValid] = useState<boolean | null>(null);
     const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     // Google Drive Folder specific state
@@ -106,6 +110,10 @@ export function CreateContentModal({
             setMetadata(null);
             setFetchingMeta(false);
             setTitleManuallyEdited(false);
+            setTitleText("");
+            setDescText("");
+            setDetectedTypeLabel(null);
+            setIsLinkValid(null);
             setError(null);
             setIsDropdownOpen(false);
             setIsDriveFolder(false);
@@ -143,7 +151,9 @@ export function CreateContentModal({
             // Auto-fill title only if user hasn't manually edited it and the title is meaningful (not just domain)
             const isMeaningfulTitle = data.title && data.domain && data.title.toLowerCase() !== data.domain.toLowerCase();
             if (!titleManuallyEdited && isMeaningfulTitle && titleRef.current) {
-                titleRef.current.value = data.title;
+                const autoTitle = data.title.slice(0, 200);
+                titleRef.current.value = autoTitle;
+                setTitleText(autoTitle);
             }
         } catch {
             // Silently fail — metadata is optional enrichment
@@ -160,9 +170,19 @@ export function CreateContentModal({
         const driveFolderDetected = isDriveFolderUrl(rawVal);
         setIsDriveFolder(driveFolderDetected);
 
+        // Update URL validity
+        if (!rawVal) {
+            setIsLinkValid(null);
+            setDetectedTypeLabel(null);
+        } else {
+            setIsLinkValid(isValidUrl(rawVal) || driveFolderDetected);
+        }
+
         if (driveFolderDetected) {
+            setDetectedTypeLabel("Google Drive Folder");
             if (!titleManuallyEdited && titleRef.current && !titleRef.current.value) {
                 titleRef.current.value = "Google Drive Folder Import";
+                setTitleText("Google Drive Folder Import");
             }
         } else if (
             val.includes(".pdf") || 
@@ -178,14 +198,19 @@ export function CreateContentModal({
             val.endsWith(".pdf")
         ) {
             setType("pdf");
+            setDetectedTypeLabel("PDF Document");
         } else if (val.includes("youtube.com") || val.includes("youtu.be")) {
             setType("youtube");
+            setDetectedTypeLabel("YouTube Video");
         } else if (val.includes(".mp4") || val.includes(".webm") || val.includes(".ogg")) {
             setType("video");
+            setDetectedTypeLabel("Video File");
         } else if (val.includes("x.com") || val.includes("twitter.com")) {
             setType("twitter");
+            setDetectedTypeLabel("Twitter / X");
         } else if (isValidUrl(rawVal)) {
             setType("article");
+            setDetectedTypeLabel("Article / Web Page");
         }
 
         // Debounce metadata fetch for non-folder links
@@ -207,9 +232,9 @@ export function CreateContentModal({
         e.preventDefault();
         setError(null);
 
-        const title = titleRef.current?.value?.trim();
+        const title = (titleText || titleRef.current?.value || "").trim();
         const link = linkRef.current?.value?.trim();
-        const description = descRef.current?.value?.trim() || "";
+        const description = (descText || descRef.current?.value || "").trim();
 
         if (!link) {
             setError("Please provide a valid URL.");
@@ -269,7 +294,11 @@ export function CreateContentModal({
             if (onSuccess) onSuccess("Memory saved successfully! ✨");
             onClose();
         } catch (err: any) {
-            setError(err?.response?.data?.message || "Failed to add memory. Please check URL.");
+            if (err?.response?.status === 409) {
+                setError("This link is already saved in your vault.");
+            } else {
+                setError(err?.response?.data?.message || "Failed to add memory. Please check URL.");
+            }
         } finally {
             setLoading(false);
         }
@@ -338,6 +367,14 @@ export function CreateContentModal({
                                 {showApiKeyInput ? "Hide API Key input" : "Have a Google Drive API Key? Click here"}
                             </button>
                         </div>
+                    ) : error && error.includes("already saved") ? (
+                        <div className="px-4 py-3 rounded-xl bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-500/30 text-xs text-purple-900 dark:text-purple-200 flex items-start gap-2.5 animate-in fade-in">
+                            <span className="shrink-0 text-base leading-none">🧠</span>
+                            <div>
+                                <span className="font-bold block mb-0.5">Already in Your Vault</span>
+                                <span className="leading-relaxed">This exact link is already saved in your second brain.</span>
+                            </div>
+                        </div>
                     ) : error && (
                         <div className="px-4 py-3 rounded-xl bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-xs text-red-600 dark:text-red-400 flex items-start gap-2.5">
                             <span className="shrink-0 text-base leading-none">⚠️</span>
@@ -347,22 +384,32 @@ export function CreateContentModal({
 
                     {/* Link Input (prominent at top) */}
                     <div>
-                        <label className="text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider block mb-1.5">
-                            URL / Link / Folder
-                        </label>
+                        <div className="flex items-center justify-between mb-1.5">
+                            <label className="text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
+                                URL / Link / Folder
+                            </label>
+                            {detectedTypeLabel && !isDriveFolder && (
+                                <span className="text-[11px] font-medium text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-500/10 px-2 py-0.5 rounded-full animate-in fade-in">
+                                    ✨ Auto-detected as {detectedTypeLabel}
+                                </span>
+                            )}
+                        </div>
                         <div className="relative">
                             <input
                                 ref={linkRef}
                                 type="text"
                                 onChange={handleLinkChange}
                                 placeholder="https://drive.google.com/drive/folders/..., https://arxiv.org/pdf/..., etc."
-                                className="w-full px-4 py-3 rounded-xl bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white text-sm focus:border-purple-500 dark:focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 dark:focus:ring-purple-500/20 outline-none transition-all placeholder:text-gray-400 dark:placeholder:text-gray-600"
+                                className="w-full px-4 py-3 rounded-xl bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white text-sm focus:border-purple-500 dark:focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 dark:focus:ring-purple-500/20 outline-none transition-all placeholder:text-gray-400 dark:placeholder:text-gray-600 pr-10"
                             />
-                            {fetchingMeta && (
-                                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                            <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
+                                {fetchingMeta && (
                                     <div className="w-4 h-4 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
-                                </div>
-                            )}
+                                )}
+                                {isLinkValid && !fetchingMeta && (
+                                    <span className="text-emerald-500 text-sm font-bold" title="Valid Web Link">✓</span>
+                                )}
+                            </div>
                         </div>
                     </div>
 
@@ -546,18 +593,28 @@ export function CreateContentModal({
 
                             {/* Title Input */}
                             <div>
-                                <label className="text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider block mb-1.5">
-                                    Memory Title
-                                    {metadata?.title && !titleManuallyEdited && (
-                                        <span className="ml-2 text-[10px] font-medium text-purple-500 dark:text-purple-400 normal-case tracking-normal">
-                                            ✨ Auto-filled from link
-                                        </span>
-                                    )}
-                                </label>
+                                <div className="flex items-center justify-between mb-1.5">
+                                    <label className="text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
+                                        Memory Title
+                                        {metadata?.title && !titleManuallyEdited && (
+                                            <span className="ml-2 text-[10px] font-medium text-purple-500 dark:text-purple-400 normal-case tracking-normal">
+                                                ✨ Auto-filled from link
+                                            </span>
+                                        )}
+                                    </label>
+                                    <span className={`text-[10px] tabular-nums ${titleText.length >= 190 ? 'text-amber-500 font-bold' : 'text-gray-400'}`}>
+                                        {titleText.length}/200
+                                    </span>
+                                </div>
                                 <input
                                     ref={titleRef}
                                     type="text"
-                                    onChange={() => setTitleManuallyEdited(true)}
+                                    maxLength={200}
+                                    value={titleText}
+                                    onChange={(e) => {
+                                        setTitleText(e.target.value);
+                                        setTitleManuallyEdited(true);
+                                    }}
                                     placeholder="e.g. Building Next-Gen Web Apps with React"
                                     className="w-full px-4 py-3 rounded-xl bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white text-sm focus:border-purple-500 dark:focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 dark:focus:ring-purple-500/20 outline-none transition-all placeholder:text-gray-400 dark:placeholder:text-gray-600"
                                 />
@@ -566,12 +623,20 @@ export function CreateContentModal({
                             {/* Description Input */}
                             {type !== "twitter" && (
                                 <div>
-                                    <label className="text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider block mb-1.5">
-                                        Description <span className="font-normal lowercase">(optional)</span>
-                                    </label>
+                                    <div className="flex items-center justify-between mb-1.5">
+                                        <label className="text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
+                                            Description <span className="font-normal lowercase">(optional)</span>
+                                        </label>
+                                        <span className={`text-[10px] tabular-nums ${descText.length >= 4800 ? 'text-amber-500 font-bold' : 'text-gray-400'}`}>
+                                            {descText.length}/5000
+                                        </span>
+                                    </div>
                                     <textarea
                                         ref={descRef}
                                         rows={2}
+                                        maxLength={5000}
+                                        value={descText}
+                                        onChange={(e) => setDescText(e.target.value)}
                                         placeholder="Add your thoughts or summary here..."
                                         className="w-full px-4 py-3 rounded-xl bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white text-sm focus:border-purple-500 dark:focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 dark:focus:ring-purple-500/20 outline-none transition-all resize-none placeholder:text-gray-400 dark:placeholder:text-gray-600"
                                     />
