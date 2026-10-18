@@ -30,12 +30,16 @@ export function Signup() {
       setError("Please enter a username.");
       return;
     }
+    if (username.trim().length < 3) {
+      setError("Username must be at least 3 characters.");
+      return;
+    }
     if (!password) {
       setError("Please enter a password.");
       return;
     }
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters.");
+    if (password.length < 8) {
+      setError("Password must be at least 8 characters.");
       return;
     }
     try {
