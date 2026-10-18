@@ -717,7 +717,7 @@ export const Card = ({
                 </div>
                 
                 {/* Actions */}
-                <div className="flex items-center gap-1 shrink-0 text-gray-400 relative" ref={moveMenuRef}>
+                <div className={`flex items-center gap-1 shrink-0 relative ${isDark ? "text-gray-400" : "text-gray-500"}`} ref={moveMenuRef}>
                     {/* Move to Collection Dropdown Button */}
                     {(onMoveCollection || (collections && collections.length > 0)) && (
                         <button
@@ -727,8 +727,8 @@ export const Card = ({
                                 setIsMoveMenuOpen(!isMoveMenuOpen);
                             }}
                             className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
-                                isDark ? "hover:bg-white/10 hover:text-white" : "hover:bg-gray-100 hover:text-gray-600"
-                            } ${isMoveMenuOpen ? "text-purple-400 bg-purple-500/15" : ""}`}
+                                isDark ? "hover:bg-white/10 hover:text-white" : "hover:bg-gray-100 hover:text-gray-700"
+                            } ${isMoveMenuOpen ? (isDark ? "text-purple-400 bg-purple-500/15" : "text-purple-700 bg-purple-100") : ""}`}
                             title="Move to Collection"
                         >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -804,7 +804,7 @@ export const Card = ({
                                 onClick={() => handleMoveCollectionSelect(null)}
                                 className={`w-full px-2 py-1.5 rounded-lg text-xs font-medium text-left transition-colors flex items-center justify-between cursor-pointer ${
                                     !currentCollectionId 
-                                        ? "bg-purple-600/15 text-purple-300 font-semibold" 
+                                        ? isDark ? "bg-purple-600/15 text-purple-300 font-semibold" : "bg-purple-100 text-purple-800 font-bold"
                                         : isDark ? "hover:bg-white/5 text-gray-300" : "hover:bg-gray-100 text-gray-700"
                                 }`}
                             >
@@ -839,7 +839,7 @@ export const Card = ({
                                                 onClick={() => handleMoveCollectionSelect(c._id)}
                                                 className={`w-full px-2 py-1.5 rounded-lg text-xs font-medium text-left transition-colors flex items-center justify-between cursor-pointer ${
                                                     isSelected
-                                                        ? "bg-purple-600/15 text-purple-300 font-semibold"
+                                                        ? isDark ? "bg-purple-600/15 text-purple-300 font-semibold" : "bg-purple-100 text-purple-800 font-bold"
                                                         : isDark ? "hover:bg-white/5 text-gray-300" : "hover:bg-gray-100 text-gray-700"
                                                 }`}
                                             >

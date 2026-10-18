@@ -140,7 +140,9 @@ export function TopBar({
             isOpen={isSidebarOpen}
           />
         </div>
-        <div className="text-sm font-medium text-gray-400 opacity-75 hover:opacity-100 transition-all whitespace-nowrap flex items-center gap-1.5">
+        <div className={`text-sm font-medium transition-all whitespace-nowrap flex items-center gap-1.5 ${
+          isDark ? "text-gray-400 opacity-75 hover:opacity-100" : "text-gray-700 hover:text-gray-900"
+        }`}>
           {title || "Dashboard"}
         </div>
       </div>

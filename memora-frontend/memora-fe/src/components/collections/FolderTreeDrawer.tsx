@@ -55,6 +55,28 @@ export const FolderTreeDrawer: React.FC<FolderTreeDrawerProps> = ({
   const [searchQuery, setSearchQuery] = useState("");
   const activeItemRef = useRef<HTMLDivElement | null>(null);
 
+  // Smooth slide-in and slide-out mounting animation controller
+  const [shouldRender, setShouldRender] = useState(open);
+  const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setShouldRender(true);
+      const raf = requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          setIsVisible(true);
+        });
+      });
+      return () => cancelAnimationFrame(raf);
+    } else {
+      setIsVisible(false);
+      const timer = setTimeout(() => {
+        setShouldRender(false);
+      }, 300); // Wait for the 300ms exit animation to complete before unmounting
+      return () => clearTimeout(timer);
+    }
+  }, [open]);
+
   // Group memories by collectionId
   const filesByCollection = useMemo(() => {
     const map = new Map<string, Content[]>();
@@ -66,6 +88,16 @@ export const FolderTreeDrawer: React.FC<FolderTreeDrawerProps> = ({
     });
     return map;
   }, [contents]);
+
+  // Recursive total files count including all nested subfolders
+  const getTotalFileCount = (folderId: string): number => {
+    let count = (filesByCollection.get(folderId) || []).length;
+    const directChildren = collections.filter((c) => c.parentId === folderId);
+    for (const child of directChildren) {
+      count += getTotalFileCount(child._id);
+    }
+    return count;
+  };
 
   // Build recursive tree from flat parentId structure
   const tree = useMemo(() => {
@@ -226,11 +258,25 @@ export const FolderTreeDrawer: React.FC<FolderTreeDrawerProps> = ({
 
           <span className="truncate flex-1 font-medium">{node.title}</span>
 
-          {childFiles.length > 0 && (
-            <span className="text-[10px] text-gray-500 px-1.5 py-0.2 rounded-full bg-white/5">
-              {childFiles.length}
-            </span>
-          )}
+          {(() => {
+            const totalFilesInFolder = getTotalFileCount(node._id);
+            if (totalFilesInFolder === 0) return null;
+            return (
+              <span
+                className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium shrink-0 ${
+                  isSelected
+                    ? isDark
+                      ? "bg-purple-500/25 text-purple-200"
+                      : "bg-purple-100 text-purple-800"
+                    : isDark
+                    ? "text-gray-400 bg-white/5"
+                    : "text-gray-600 bg-gray-100"
+                }`}
+              >
+                {totalFilesInFolder} {totalFilesInFolder === 1 ? "file" : "files"}
+              </span>
+            );
+          })()}
 
           {isSelected && (
             <span className="w-4 h-4 rounded-full bg-purple-500/30 text-purple-300 text-[10px] font-bold flex items-center justify-center shrink-0">
@@ -241,11 +287,11 @@ export const FolderTreeDrawer: React.FC<FolderTreeDrawerProps> = ({
 
         {/* Smooth Accordion Height with Branch Connector Lines */}
         <div
-          className={`grid transition-[grid-template-rows] duration-300 ease-in-out ${
-            isExpanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+          className={`grid transition-[grid-template-rows,opacity] duration-300 ease-in-out ${
+            isExpanded ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
           }`}
         >
-          <div className="overflow-hidden">
+          <div className="overflow-hidden min-h-0">
             <ul
               className={`ml-[11px] pl-[11px] border-l ${
                 isDark ? "border-white/10" : "border-gray-200"
@@ -296,19 +342,23 @@ export const FolderTreeDrawer: React.FC<FolderTreeDrawerProps> = ({
 
   const rootUnorganizedFiles = filesByCollection.get("root") || [];
 
-  if (!open) return null;
+  if (!shouldRender) return null;
 
   return (
     <>
-      {/* Backdrop */}
+      {/* Smooth Backdrop Fade */}
       <div
         onClick={onClose}
-        className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs transition-opacity duration-200"
+        className={`fixed inset-0 z-50 bg-black/60 backdrop-blur-xs transition-opacity duration-300 ease-out cursor-pointer ${
+          isVisible ? "opacity-100" : "opacity-0 pointer-events-none"
+        }`}
       />
 
-      {/* Slide-in Drawer */}
+      {/* Smooth GPU-Accelerated Slide-in / Slide-out Drawer */}
       <aside
-        className={`fixed top-0 right-0 bottom-0 z-50 w-80 sm:w-96 border-l shadow-2xl flex flex-col transition-transform duration-300 ease-out animate-in slide-in-from-right ${
+        className={`fixed top-0 right-0 bottom-0 z-50 w-80 sm:w-96 border-l shadow-2xl flex flex-col transition-transform duration-300 ease-out transform ${
+          isVisible ? "translate-x-0" : "translate-x-full"
+        } ${
           isDark
             ? "bg-[#18181b] border-white/10 text-gray-200"
             : "bg-white border-gray-200 text-gray-800"
@@ -348,6 +398,32 @@ export const FolderTreeDrawer: React.FC<FolderTreeDrawerProps> = ({
             ✕
           </button>
         </div>
+
+        {/* Back to Parent Folder Button (when inside a subfolder or collection) */}
+        {scopedCollection && (() => {
+          const parentFolder = scopedCollection.parentId
+            ? collections.find((c) => c._id === scopedCollection.parentId)
+            : null;
+          return (
+            <div className={`px-3 pt-2.5 pb-1 border-b ${isDark ? "border-white/5" : "border-gray-100"}`}>
+              <button
+                type="button"
+                onClick={() => onSelectCollection(parentFolder || null)}
+                className={`w-full px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer border ${
+                  isDark
+                    ? "bg-white/5 hover:bg-white/10 text-purple-300 border-white/10 hover:border-purple-500/30"
+                    : "bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-200"
+                }`}
+                title={`Go back to ${parentFolder ? parentFolder.title : "All Collections"}`}
+              >
+                <span className="text-sm leading-none font-bold">←</span>
+                <span className="truncate">
+                  Back to {parentFolder ? parentFolder.title : "All Collections"}
+                </span>
+              </button>
+            </div>
+          );
+        })()}
 
         {/* Filter Input */}
         <div className="p-3">

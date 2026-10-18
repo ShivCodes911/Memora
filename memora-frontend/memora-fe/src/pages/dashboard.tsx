@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef, useMemo } from "react";
+import { useSearchParams } from "react-router-dom";
 import type { Content } from "../types/content";
 import type { Collection } from "../types/collection";
 import { TopBar, type FilterCounts } from "../components/ui/TopBar";
@@ -48,6 +49,32 @@ export function Dashboard() {
   const [sharingCollection, setSharingCollection] = useState<Collection | null>(null);
   const [isTreeDrawerOpen, setIsTreeDrawerOpen] = useState(false);
   const [highlightedCardId, setHighlightedCardId] = useState<string | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Unified collection navigator that updates both state and browser history
+  const navigateToCollection = (col: Collection | null) => {
+    setSelectedCollection(col);
+    setActiveTab("collections");
+    if (col) {
+      setSearchParams({ c: col._id });
+    } else {
+      setSearchParams({});
+    }
+  };
+
+  // Sync browser Back / Forward navigation with active collection
+  useEffect(() => {
+    const colId = searchParams.get("c");
+    if (colId) {
+      const matched = collections.find((c) => c._id === colId);
+      if (matched && matched._id !== selectedCollection?._id) {
+        setSelectedCollection(matched);
+        setActiveTab("collections");
+      }
+    } else if (activeTab === "collections" && selectedCollection) {
+      setSelectedCollection(null);
+    }
+  }, [searchParams, collections]);
 
   const [isDark, setIsDark] = useState(() => {
     const saved = localStorage.getItem("theme");
@@ -379,7 +406,7 @@ export function Dashboard() {
         onSelectTab={(tabId) => {
           setActiveTab(tabId);
           if (tabId === "collections") {
-            setSelectedCollection(null);
+            navigateToCollection(null);
           }
         }}
         items={NAV_ITEMS}
@@ -447,13 +474,17 @@ export function Dashboard() {
                   <div className="flex items-center gap-1.5">
                     <button
                       type="button"
-                      onClick={() => setSelectedCollection(null)}
-                      className="hover:text-white transition-colors cursor-pointer"
+                      onClick={() => navigateToCollection(null)}
+                      className={`transition-colors cursor-pointer ${
+                        isDark ? "text-gray-400 hover:text-white" : "text-gray-500 hover:text-purple-700 font-medium"
+                      }`}
                     >
                       Collections
                     </button>
-                    <span className="text-gray-600">/</span>
-                    <span className="text-gray-200">{selectedCollection.title}</span>
+                    <span className={isDark ? "text-gray-600" : "text-gray-400"}>/</span>
+                    <span className={`font-semibold ${isDark ? "text-gray-200" : "text-gray-900 font-bold"}`}>
+                      {selectedCollection.title}
+                    </span>
                   </div>
                 ) : (
                   "Collections"
@@ -494,7 +525,7 @@ export function Dashboard() {
             <CollectionsHub
               collections={collections}
               contents={contents}
-              onSelectCollection={(col) => setSelectedCollection(col)}
+              onSelectCollection={(col) => navigateToCollection(col)}
               onCreateCollectionClick={() => {
                 setEditingCollection(null);
                 setIsCollectionModalOpen(true);
@@ -553,14 +584,18 @@ export function Dashboard() {
 
               {/* Collection Folder Header Breadcrumb */}
               {activeTab === "collections" && selectedCollection && (
-                <div className="flex flex-col gap-4 pb-5 border-b border-white/5 select-none">
+                <div className={`flex flex-col gap-4 pb-5 border-b select-none ${isDark ? "border-white/5" : "border-gray-200"}`}>
                   {/* Top Bar: Breadcrumb + Action Buttons */}
                   <div className="flex items-center justify-between flex-wrap gap-4">
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <button
                         type="button"
-                        onClick={() => setSelectedCollection(null)}
-                        className="px-2.5 py-1.5 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 hover:text-purple-300 border border-purple-500/20 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
+                        onClick={() => navigateToCollection(null)}
+                        className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 border ${
+                          isDark
+                            ? "bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 hover:text-purple-300 border-purple-500/20"
+                            : "bg-purple-50 hover:bg-purple-100 text-purple-700 hover:text-purple-800 border-purple-200 shadow-xs"
+                        }`}
                       >
                         <CollectionIcon icon={DEFAULT_COLLECTION_ICON} className="w-3.5 h-3.5" />
                         <span>All Collections</span>
@@ -570,17 +605,23 @@ export function Dashboard() {
                         const isCurrent = crumb._id === selectedCollection._id;
                         return (
                           <div key={crumb._id} className="flex items-center gap-1.5">
-                            <span className="text-gray-500 text-xs">/</span>
+                            <span className={isDark ? "text-gray-500 text-xs" : "text-gray-400 text-xs font-bold"}>/</span>
                             {isCurrent ? (
-                              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-500/15 border border-purple-500/25 text-xs font-bold text-white shadow-sm">
+                              <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold shadow-xs ${
+                                isDark
+                                  ? "bg-purple-500/15 border-purple-500/25 text-white"
+                                  : "bg-purple-100 border-purple-300 text-purple-950 font-extrabold"
+                              }`}>
                                 <CollectionIcon icon={crumb.icon} className="w-4 h-4" />
                                 <span>{crumb.title}</span>
                               </div>
                             ) : (
                               <button
                                 type="button"
-                                onClick={() => setSelectedCollection(crumb)}
-                                className="text-xs font-semibold text-gray-400 hover:text-purple-300 transition-colors cursor-pointer hover:underline px-1.5 py-1"
+                                onClick={() => navigateToCollection(crumb)}
+                                className={`text-xs font-semibold transition-colors cursor-pointer hover:underline px-1.5 py-1 ${
+                                  isDark ? "text-gray-400 hover:text-purple-300" : "text-gray-600 hover:text-purple-700"
+                                }`}
                               >
                                 {crumb.title}
                               </button>
@@ -593,27 +634,13 @@ export function Dashboard() {
                     <div className="flex items-center gap-2.5">
                       <button
                         type="button"
-                        onClick={() => setIsTreeDrawerOpen(true)}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95 ${
-                          isDark
-                            ? "bg-purple-600/15 border-purple-500/30 text-purple-300 hover:bg-purple-600/25"
-                            : "bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100"
-                        }`}
-                        title="View this collection's folder tree"
-                      >
-                        <svg className="w-3.5 h-3.5 text-purple-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
-                        </svg>
-                        <span>Tree</span>
-                      </button>
-
-                      <button
-                        type="button"
                         onClick={() => {
                           setSharingCollection(selectedCollection);
                           setIsShareCollectionModalOpen(true);
                         }}
-                        className="px-3 py-1.5 rounded-xl text-xs font-semibold border border-white/10 hover:bg-white/10 transition-all flex items-center gap-1.5 cursor-pointer text-gray-300"
+                        className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all flex items-center gap-1.5 cursor-pointer ${
+                          isDark ? "border-white/10 hover:bg-white/10 text-gray-300" : "border-gray-200 hover:bg-gray-100 text-gray-700"
+                        }`}
                       >
                         <span>🔗</span>
                         <span>{selectedCollection.shareHash ? "Shared" : "Share"}</span>
@@ -648,7 +675,7 @@ export function Dashboard() {
                           return (
                             <div
                               key={sub._id}
-                              onClick={() => setSelectedCollection(sub)}
+                              onClick={() => navigateToCollection(sub)}
                               className={`p-3 rounded-2xl border transition-all duration-200 cursor-pointer flex items-center gap-2.5 group select-none shadow-sm ${isDark
                                   ? "bg-[#18181b]/90 border-white/10 hover:border-purple-500/50 hover:bg-[#202024] hover:shadow-lg"
                                   : "bg-white border-gray-200 hover:border-purple-400 hover:shadow-md"
@@ -754,8 +781,7 @@ export function Dashboard() {
           refresh();
           refreshCollections();
           if (importedCollection) {
-            setSelectedCollection(importedCollection);
-            setActiveTab("collections");
+            navigateToCollection(importedCollection);
           }
         }}
       />
@@ -808,16 +834,14 @@ export function Dashboard() {
         selectedCollection={selectedCollection}
         scopedCollection={activeTab === "collections" && selectedCollection ? selectedCollection : null}
         onSelectCollection={(col) => {
-          setSelectedCollection(col);
-          setActiveTab("collections");
+          navigateToCollection(col);
         }}
         onSelectContent={(item) => {
           if (item.collectionId) {
             const parent = collections.find((c) => c._id === item.collectionId);
-            setSelectedCollection(parent || null);
-            setActiveTab("collections");
+            navigateToCollection(parent || null);
           } else {
-            setSelectedCollection(null);
+            navigateToCollection(null);
             setActiveTab("home");
           }
           setIsTreeDrawerOpen(false);

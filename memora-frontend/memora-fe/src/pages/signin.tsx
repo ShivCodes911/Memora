@@ -47,9 +47,9 @@ export function Signin() {
         const params = new URLSearchParams(window.location.search);
         const redirect = params.get("redirect");
         if (redirect && redirect.startsWith("/")) {
-          navigate(redirect);
+          navigate(redirect, { replace: true });
         } else {
-          navigate("/dashboard");
+          navigate("/dashboard", { replace: true });
         }
       } else {
         setError("Invalid response from server.");
