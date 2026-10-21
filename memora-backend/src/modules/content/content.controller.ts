@@ -282,8 +282,26 @@ export const deleteContent=async(req:Request,res:Response)=>{
 export const shareContent=async(req:Request,res:Response)=>{
     try {
 
+        const userId=req.userId
+
+        if(!userId){
+            return res.status(401).json({
+                message:"Unauthorized"
+            })
+        }
+
+        // req.body is undefined when no body is sent
+        const {share}=req.body ?? {};
+        if(typeof share !=="boolean"){
+            return res.status(400).json({
+                message:"share must be true or false"
+            })
+        }
+
+        if( share===true){
+        
         const existingLink=await linkModel.findOne({
-            userId:req.userId!,
+            userId,
         })
 
         // user can not share multiple links so , that is why , 
@@ -294,18 +312,10 @@ export const shareContent=async(req:Request,res:Response)=>{
                 link:`/share/${existingLink.hash}`
             })
         }
-        const {share}:{share:boolean}=req.body;
 
-        const userId=req.userId
-
-        if(!userId){
-            return res.status(401).json({
-                message:"Unauthorized"
-            })
-        }
         const shareHash=hash(10);
 
-        if(share){
+        
            const link=await linkModel.create({
                 hash:shareHash,
                 userId
@@ -316,17 +326,18 @@ export const shareContent=async(req:Request,res:Response)=>{
                 link: `/share/${link.hash}`
             });
         }
-        else{
+    
+    else{
             await linkModel.deleteOne({
                 userId
             })
-            return res.status(201).json({
-            message:"removed link",
+            return res.status(200).json({
+            message:"Sharing turned off",
            
         })
         }
     } catch (error) {
-        console.error("failed",error);
+        console.error("shareContent failed",error);
 
         return res.status(500).json({
             message: "Internal server error"
