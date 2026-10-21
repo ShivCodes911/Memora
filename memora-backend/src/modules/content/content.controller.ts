@@ -349,20 +349,37 @@ export const shareContent=async(req:Request,res:Response)=>{
 
 export const fetchSharedContent=async(req:Request,res:Response)=>{
     try {
-        const hash=req.params.shareLink!;
+        const hash=req.params.shareLink;
 
+        if(!hash){
+            return res.status(400).json({
+                message:"Provide the proper params"
+            })
+        }
         
-
         const link=await linkModel.findOne({
             hash
          });
          
 
             if(!link){
-               return res.status(401).json({
-                    message:"incorrect Input"
+               return res.status(404).json({
+                    message:"Share Link not Found"
                 })
             };
+                     // i also want user Info;
+
+            const user=await userModel.findOne({
+                _id:link.userId
+            }).select("username");
+
+            
+
+            if(!user){
+                return res.status(404).json({
+                    message:"User not Found"
+                })
+            }
             
 
             // now we have got the link , now i want the load the content of the user 
@@ -372,29 +389,16 @@ export const fetchSharedContent=async(req:Request,res:Response)=>{
             const content = await contentModel.find({
                 userId: link.userId,
                 type: { $ne: "shared_brain" }
-            }).sort({ _id: 1 });
-
-            
-
-            // i also want user Info;
-
-            const user=await userModel.findOne({
-                _id:link.userId
-            });
-
-            
-
-            if(!user){
-                return res.status(401).json({
-                    message:"User not Found"
-                })
-            }
-            return res.json({
-                username:user.username,
-                content:content
-            })
+            }).sort({ _id: 1 }).select(" link type title description");
+          
+           
+      return res.status(200).json({
+    message:"Here is the shared brain",
+    username:user.username,
+    content
+});
 } catch (error) {
-        console.error("failed",error);
+        console.error("fetchSharedContent failed",error);
            return res.status(500).json({
             message: "Internal server error"
         });
