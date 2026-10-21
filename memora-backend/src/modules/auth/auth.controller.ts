@@ -23,7 +23,7 @@ export const signup=async(req:Request,res:Response)=>{
 
         const existingUser=await userModel.findOne({username});
         if(existingUser){
-            return res.status(403).json({
+            return res.status(409).json({
                 message:"user already exists"
             }) 
         }
