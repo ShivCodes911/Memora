@@ -7,7 +7,7 @@ What's **done**, what's **left**, **why** each item matters, and **how** to do i
 > - Many items depend on a backend change. They say which one, e.g. *(needs backend 2.2)*. The backend plan is [`memora-backend/plan.md`](../memora-backend/plan.md).
 > - Paths are relative to `memora-frontend/memora-fe/src/`.
 >
-> **Last checked against the code:** 2026-10-21. `tsc --noEmit` passes; `eslint .` reports 29 errors and 2 warnings.
+> **Last checked against the code:** 2026-10-22. `tsc --noEmit` passes; `eslint .` reports 29 errors and 2 warnings (as of 2026-10-21).
 
 ---
 
@@ -83,11 +83,12 @@ Do each one **in the same PR** as the backend change, so `main` never breaks.
 | # | Status | What | Depends on | How |
 |---|---|---|---|---|
 | F3.1 | 🔴 | One response shape | backend 3.3 | `useCollections.tsx` reads `data.data.collection \|\| data.collection`; switch every read to `data.data` |
-| F3.2 | 🔴 | "Stop sharing my brain" button | backend 2.2 | The dashboard only ever sends `{ share: true }`. Add an off switch that sends `{ share: false }` |
-| F3.3 | 🔴 | Signup messages | backend 2.5 | Signup will return 201 (created) and 409 (name taken). Check `signup.tsx` shows the backend `message` for both |
+| F3.2 | 🔴 | "Stop sharing my brain" button | backend 2.2 🟢 (done) | **Backend is ready:** `{ share: false }` now turns sharing off (200 `Sharing turned off`), and the old link returns 404. The dashboard only ever sends `{ share: true }`. Add an off switch that sends `{ share: false }` |
+| F3.3 | 🔴 | Signup messages | backend 2.5 🟡 | Name taken now returns **409** (done); 201 for "created" is still to come. Check `signup.tsx` shows the backend `message` for both |
 | F3.4 | 🔴 | Pagination / "load more" | backend 4.2 | Read `{ items, nextCursor }`; load the next page on scroll or a button |
 | F3.5 | 🔴 | Use stored previews | backend 4.4 | Cards read `content.preview` instead of calling `/content/preview/metadata` for every card |
 | F3.6 | 🔴 | PATCH instead of PUT | — | `Card.tsx` and `dashboard.tsx` use `axios.put` for partial updates. Switch to `axios.patch`, then the backend can drop its PUT route |
+| F3.7 | 🟢 | Collection icons: keep the preset image links | backend 2.7 🟢 (done) | Decision: icons stay as the fixed presets in `components/collections/CollectionIcon.tsx`. The backend accepts **one emoji** (e.g. the default `📁`) **or a built-in icon link starting with `https://img.icons8.com/`** (max 300 chars), so no frontend change is needed. New presets added later must also come from `https://img.icons8.com/`, or the backend returns 400. Optional: `maxLength={200}` on the title input in `CollectionModal.tsx` |
 
 ---
 
