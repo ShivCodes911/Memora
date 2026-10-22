@@ -4,10 +4,10 @@ What's **done**, what's **left**, **why** each item matters, and **how** to do i
 
 > **How to read this file**
 > - 🟢 = done, 🟡 = started, 🔴 = to do.
-> - Many items depend on a backend change. They say which one, e.g. *(needs backend 2.2)*. The backend plan is [`memora-backend/plan.md`](../memora-backend/plan.md).
+> - Many items depend on a backend change. They say which one, e.g. *(needs backend 2.2)*. The backend plan is [`memora-backend/plan.md`](../../memora-backend/plan.md).
 > - Paths are relative to `memora-frontend/memora-fe/src/`.
 >
-> **Last checked against the code:** 2026-10-22. `tsc --noEmit` passes; `eslint .` reports 29 errors and 2 warnings (as of 2026-10-21).
+> **Last checked against the code and the backend (up to commit `459a61a`):** 2026-10-22. `tsc --noEmit` passes; `eslint .` reports 29 errors and 2 warnings (as of 2026-10-21).
 
 ---
 
@@ -17,7 +17,7 @@ What's **done**, what's **left**, **why** each item matters, and **how** to do i
 flowchart LR
     A["🟢 Done<br/>Pages, collections UI,<br/>sharing, Drive import"] --> B["🔴 F1<br/>Auth & session"]
     B --> C["🔴 F2<br/>Config"]
-    C --> D["🔴 F3<br/>Follow backend changes"]
+    C --> D["🟡 F3<br/>Follow backend changes"]
     D --> E["🔴 F4<br/>Performance"]
     E --> F["🔴 F5<br/>Code quality"]
     F --> G["🔴 F6<br/>Security"]
@@ -46,6 +46,19 @@ flowchart LR
 | Logout (clears token, back to signin) | `components/ui/ProfileMenu.tsx` |
 | `tsc --noEmit` passes | — |
 
+### Backend changes so far, and what they mean for the frontend
+
+Every change below was checked against the frontend code. **Nothing in the frontend is broken by them.** Some make a frontend item possible or more urgent.
+
+| Backend change (commit) | What changed in the API | Frontend impact |
+|---|---|---|
+| Token expiry, `authMiddleware` fix (`8fdb869`) | Tokens expire after **7 days**; expired → 401 `Session expired, please log in again` | Nothing breaks today, but after 7 days requests start failing silently → **F1.1** is now important |
+| Signup name taken (`d5a597d`) | 403 → **409** `user already exists` | `signup.tsx` already shows the backend `message` → F3.3 |
+| Brain sharing off (`fb927db`) | `{ share: false }` now really turns sharing off (200 `Sharing turned off`); `{ share: "false" }` → 400 | The "Share brain" button still works (it reads `response.data.link`). An off switch can now be built → **F3.2** |
+| Public brain view (`e0f18b1`) | Bad or turned-off link → **404** `Share Link not Found` (was 401); notes now only have `_id, link, type, title, description`; response has a `message` | `sharedPage.tsx` and the shared workspace in `dashboard.tsx` only use `username` and `content`, and show the backend `message` on error → no change needed |
+| Delete collection (`efb8dd6`) | Deleting a collection whose link is also in All content now works (was 500). The duplicate copy in the collection is removed, the All content copy is kept | No change needed. Deleting those collections from the app now succeeds instead of the collection staying in the sidebar |
+| Collection validation (`459a61a`) | Title: 1–200 chars. Icon: one emoji or an `https://img.icons8.com/` link. Bad input → 400 with a clear `message` (an object icon used to be a 500) | Current presets all pass; `CollectionModal.tsx` shows the backend `message` → F3.7 (done), F3.8 (optional) |
+
 ---
 
 ## 3. F1: Auth & session 🔴
@@ -61,7 +74,7 @@ flowchart TD
 
 | # | Status | What | Why | How |
 |---|---|---|---|---|
-| F1.1 | 🔴 | Global 401 handling | Tokens now expire after 7 days. Only `sharedCollectionPage.tsx` reacts to 401; everywhere else requests just fail silently | One axios **response interceptor**: on 401, remove the token and navigate to `/signin`, showing the backend's `message` |
+| F1.1 | 🔴 **important** | Global 401 handling | Tokens now expire after 7 days (backend 1.2 🟢). Only `sharedCollectionPage.tsx` reacts to 401; everywhere else requests just fail silently | One axios **response interceptor**: on 401, remove the token and navigate to `/signin`, showing the backend's `message` (an expired token says `Session expired, please log in again`) |
 | F1.2 | 🔴 | One axios instance | The `Authorization: Bearer ...` header is copy-pasted in about 15 places (`Card.tsx`, `dashboard.tsx`, `createContentModel.tsx`, both hooks, `ProfileMenu.tsx`, …) | `api.ts` with `axios.create({ baseURL })` and a request interceptor that adds the token. Replace the copies one file at a time |
 | F1.3 | 🔴 | Protect `/dashboard` | Opening `/dashboard` without a token loads the page and every request fails | A small `<RequireAuth>` wrapper in `App.tsx`: no token → `<Navigate to="/signin" />` |
 | F1.4 | 🔴 | httpOnly cookie *(later)* | JavaScript can't read the token, so an XSS bug can't steal it | *(needs backend 1.9)* `withCredentials: true` on the axios instance, stop using `localStorage` for the token, call `POST /auth/logout` on logout |
@@ -76,7 +89,7 @@ flowchart TD
 
 ---
 
-## 5. F3: Follow backend changes 🔴
+## 5. F3: Follow backend changes 🟡
 
 Do each one **in the same PR** as the backend change, so `main` never breaks.
 
@@ -88,7 +101,9 @@ Do each one **in the same PR** as the backend change, so `main` never breaks.
 | F3.4 | 🔴 | Pagination / "load more" | backend 4.2 | Read `{ items, nextCursor }`; load the next page on scroll or a button |
 | F3.5 | 🔴 | Use stored previews | backend 4.4 | Cards read `content.preview` instead of calling `/content/preview/metadata` for every card |
 | F3.6 | 🔴 | PATCH instead of PUT | — | `Card.tsx` and `dashboard.tsx` use `axios.put` for partial updates. Switch to `axios.patch`, then the backend can drop its PUT route |
-| F3.7 | 🟢 | Collection icons: keep the preset image links | backend 2.7 🟢 (done) | Decision: icons stay as the fixed presets in `components/collections/CollectionIcon.tsx`. The backend accepts **one emoji** (e.g. the default `📁`) **or a built-in icon link starting with `https://img.icons8.com/`** (max 300 chars), so no frontend change is needed. New presets added later must also come from `https://img.icons8.com/`, or the backend returns 400. Optional: `maxLength={200}` on the title input in `CollectionModal.tsx` |
+| F3.7 | 🟢 | Collection icons: keep the preset image links | backend 2.7 🟢 (done) | Decision: icons stay as the fixed presets in `components/collections/CollectionIcon.tsx`. The backend accepts **one emoji** (e.g. the default `📁`) **or a built-in icon link starting with `https://img.icons8.com/`** (max 300 chars), so no frontend change is needed. New presets added later must also come from `https://img.icons8.com/`, or the backend returns 400 |
+| F3.8 | 🔴 | Collection title limit in the dialog *(optional)* | backend 2.7 🟢 (done) | The backend rejects titles over 200 characters. Add `maxLength={200}` to the title `<input>` in `components/collections/CollectionModal.tsx`, so users can't type past the limit |
+| F3.9 | 🔴 | Disable "Share brain" while it's loading *(optional)* | backend 2.2 🟢 | Two very fast clicks send two requests; the second can get a 500 (backend follow-up: 11000 → 409). Disabling the button until the first request finishes avoids it |
 
 ---
 

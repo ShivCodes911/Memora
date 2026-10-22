@@ -7,7 +7,7 @@ What's **done**, what's **left**, **why** each item matters, and **how** to do i
 > - Work through the phases **in order**. Each one makes the next one safer.
 > - Mark an item 🟢 only when it is **done and tested** (see "Definition of done" at the bottom).
 > - Paths are relative to `memora-backend/src/`.
-> - Frontend work lives in [`memora-frontend/plan.md`](../memora-frontend/plan.md).
+> - Frontend work lives in [`memora-frontend/memora-fe/plan.md`](../memora-frontend/memora-fe/plan.md).
 >
 > **Last checked against the code and a full route test:** 2026-10-21.
 
@@ -148,7 +148,7 @@ flowchart LR
 | 1.6 | 🔴 | Security headers + body limit | Browsers block common attacks; huge bodies are refused | `npm i helmet` → `app.use(helmet())`, and `express.json({ limit: "100kb" })` |
 | 1.7 | 🔴 | Safe link previews (`fetchMetadata`) | **SSRF, confirmed by test:** the server fetched `http://127.0.0.1:3000/...`. It also reads pages of any size | Reuse `toWebLink`; `dns.lookup` the host and reject `127.*`, `10.*`, `192.168.*`, `172.16-31.*`, `169.254.*`, `::1`; stop reading after about 1 MB. Also drop the `req.query.url as string` cast |
 | 1.8 | 🔴 | Public views send only safe fields | Confirmed by test: notes include `userId`, `tags`, `__v`; the collection includes `userId` | `.select("link type title description")` in `getSharedCollection` and `fetchSharedContent`; don't send `collection.userId` |
-| 1.9 | 🔴 | Token in an httpOnly cookie *(after the rest)* | JavaScript can't read it, so an XSS bug can't steal the login | `res.cookie(..., { httpOnly, secure, sameSite: "lax" })`, `cookie-parser` in `authMiddleware`, `POST /auth/logout`. Frontend side: `memora-frontend/plan.md` F1.4 |
+| 1.9 | 🔴 | Token in an httpOnly cookie *(after the rest)* | JavaScript can't read it, so an XSS bug can't steal the login | `res.cookie(..., { httpOnly, secure, sameSite: "lax" })`, `cookie-parser` in `authMiddleware`, `POST /auth/logout`. Frontend side: `memora-frontend/memora-fe/plan.md` F1.4 |
 
 ---
 
@@ -222,7 +222,7 @@ flowchart LR
 |---|---|---|---|---|
 | 3.1 | 🟡 | `zod` validation | Replaces dozens of hand-written `typeof` checks | **Done:** zod installed; `validators/auth.validator.ts`, `validators/content.validator.ts` (`addContent`, Drive import). **Left:** `updateContent`, all collection handlers, `shareContent`. Handlers call `schema.safeParse()` directly; a `validate(schema)` middleware is optional |
 | 3.2 | 🔴 | Shared helpers + global error handler | Stops copy-pasted `catch` blocks. Malformed JSON currently returns Express's **HTML stack-trace page** | `utils/objectId.ts` (`isValidId`) and a **global error middleware** in `app.ts` (bad JSON → 400 JSON, 11000 → 409, everything else → "Internal server error"). No `asyncHandler` needed: Express 5 already passes errors from `async` handlers to the error middleware |
-| 3.3 | 🔴 | One response shape | The frontend reads `data.collection`, `data.data.collection`, `updatedCollection.collection`… | Use `{ message, data }` everywhere. **Change the frontend in the same PR** (`memora-frontend/plan.md` F3.1) |
+| 3.3 | 🔴 | One response shape | The frontend reads `data.collection`, `data.data.collection`, `updatedCollection.collection`… | Use `{ message, data }` everywhere. **Change the frontend in the same PR** (`memora-frontend/memora-fe/plan.md` F3.1) |
 | 3.4 | 🔴 | Validate env vars at startup | Crash early with a clear message instead of failing later; removes every `process.env.JWT_SECRET!` | `config/env.ts` checks `MONGO_URI`, `JWT_SECRET`, `PORT`, `FRONTEND_URL`. Also fix `.env.example` (`PORT=8000` → `3000`, add `FRONTEND_URL`) |
 | 3.5 | 🔴 | Remove dead code | `tags.model.ts` is not imported anywhere, and its title is unique **across all users**. Content still has a `tags` field that clone handlers copy | Delete it, or redesign it as per-user tags |
 | 3.6 | 🔴 | Formatting + naming | Readability; logs you can search | Shift+Alt+F (or Prettier); log labels must match the function: `"deletedContent failed"`, `"fetching collection failed"`, `"getshareCollection failed"`, `"addContent content:"`, and the plain `"failed"` in `shareContent` / `fetchSharedContent` |
