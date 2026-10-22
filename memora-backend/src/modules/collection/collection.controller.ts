@@ -4,6 +4,7 @@ import collectionModel from "../../models/collection.model.js";
 import contentModel from "../../models/content.model.js";
 import { hash } from "../../utils/hashingLink.util.js";
 import userModel from "../../models/user.model.js";
+import { createCollectionSchema, updateCollectionSchema } from "../../validators/collection.validator.js";
 
 
 
@@ -18,30 +19,33 @@ export const createCollection=async(req:Request,res:Response)=>{
             })
         };
 
-        const {title,icon}=req.body;
+        const parsed=createCollectionSchema.safeParse(req.body);
 
-       if(typeof title!=="string" || !title.trim()){
+        if(!parsed.success){
             return res.status(400).json({
-                message:"Title is required"
+                message:parsed.error.issues[0]?.message ?? "Invalid input"
             })
         };
 
-        const collection=await collectionModel.create({
-            title:title.trim(),
-            icon,
-            userId
-        });
+        // typed + trimmed, never the raw req.body
+        const {title,icon}=parsed.data;
+
+        // only set icon when it was sent, so the schema default 📁 is used otherwise
+        const data:{title:string; userId:string; icon?:string}={title,userId};
+        if(icon!==undefined) data.icon=icon;
+
+        const collection=await collectionModel.create(data);
 
         return res.status(201).json({
             message:"Collection Created !",
             collection:collection
         });
     } catch (error) {
-    console.error("createCollection failed",error);
-    return res.status(500).json({
-        message:"Internal server error"
-    });
-}
+        console.error("createCollection failed",error);
+        return res.status(500).json({
+            message:"Internal server error"
+        });
+    }
 };
 
 // fetching the collection
@@ -74,44 +78,35 @@ export const getCollection=async(req:Request,res:Response)=>{
 }
 };
 
-export const updateCollection =async(req:Request,res:Response)=>{
+// renames a collection or changes its icon
+export const updateCollection=async(req:Request,res:Response)=>{
     try {
-
         const userId=req.userId;
+        const id=req.params.id;
 
         if(!userId){
             return res.status(401).json({
                 message:"user is Unauthorized"
             })
-        }
-
-        const id=req.params.id;
-
-        const {title,icon}=req.body;
+        };
 
         if(!id || !mongoose.isValidObjectId(id)){
             return res.status(400).json({
                 message:"provides Params Id is Incorrect"
             })
-        }
+        };
 
-    if(title===undefined && icon===undefined){
-        return res.status(400).json({
-            message:"Nothing is updated"
-        }) // "Nothing to update"
-    }
-    if(title!==undefined && (typeof title!=="string" || !title.trim())){
-        return  res.status(400).json({
-            message:"Title must be a non-empty string"
-        })  
-    }
-    if(icon!==undefined && typeof icon!=="string"){
-        return  res.status(400).json({
-            message:"Icon must be a string"
-        }) 
-    }
+        const parsed=updateCollectionSchema.safeParse(req.body);
 
-        const collection = await collectionModel.findOne({_id:id ,userId:userId});
+        if(!parsed.success){
+            return res.status(400).json({
+                message:parsed.error.issues[0]?.message ?? "Invalid input"
+            })
+        };
+
+        const {title,icon}=parsed.data;
+
+        const collection=await collectionModel.findOne({_id:id,userId});
 
         if(!collection){
             return res.status(404).json({
@@ -119,25 +114,23 @@ export const updateCollection =async(req:Request,res:Response)=>{
             })
         };
 
-        
-        if(title!==undefined) collection.title=title.trim();
-        if(icon!==undefined)  collection.icon=icon;
+        // not sent → leave it as it is
+        if(title!==undefined) collection.title=title;
+        if(icon!==undefined) collection.icon=icon;
 
-       await collection.save();  
+        await collection.save();
 
-       return res.status(200).json({
-        message:"Collection updated Successfully !!",
-        updatedCollection:{
-            collection
-        }
-       })
+        return res.status(200).json({
+            message:"Collection updated Successfully !!",
+            updatedCollection:{
+                collection
+            }
+        })
     } catch (error) {
         console.error("updateCollection failed",error);
-    return res.status(500).json({
-        message:"Internal server error"
-    });
-
-        
+        return res.status(500).json({
+            message:"Internal server error"
+        });
     }
 };
 
