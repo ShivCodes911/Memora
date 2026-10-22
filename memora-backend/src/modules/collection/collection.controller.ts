@@ -142,25 +142,25 @@ export const updateCollection =async(req:Request,res:Response)=>{
 };
 
 
+// deletes a collection; its notes move back to "All content"
 export const deleteCollection=async(req:Request,res:Response)=>{
     try {
         const userId=req.userId;
+        const id=req.params.id;
 
         if(!userId){
             return res.status(401).json({
                 message:"Unauthorized"
             })
-        }
+        };
 
-        const id = req.params.id;
-
-        if(!id  || !mongoose.isValidObjectId(id)){
+        if(!id || !mongoose.isValidObjectId(id)){
             return res.status(400).json({
                 message:"Provide valid Collection ID"
             })
         };
 
-        const collection = await collectionModel.findOne({_id:id,userId});
+        const collection=await collectionModel.findOne({_id:id,userId});
 
         if(!collection){
             return res.status(404).json({
@@ -168,27 +168,34 @@ export const deleteCollection=async(req:Request,res:Response)=>{
             })
         };
 
-        await contentModel.updateMany({
+        // links this user already has in "All content"
+        const linksInAllContent=await contentModel.distinct("link",{userId,collectionId:null});
+
+        // same link is already in "All content", so these copies are duplicates.
+        // they must go first, or the move below breaks the unique index (11000)
+        await contentModel.deleteMany({
+            userId,
             collectionId:id,
-            userId
-        },{
-            $set:{collectionId:null}
+            link:{$in:linksInAllContent}
         });
+
+        // move the remaining notes back to "All content"
+        await contentModel.updateMany(
+            {collectionId:id,userId},
+            {$set:{collectionId:null}}
+        );
 
         await collectionModel.deleteOne({_id:id,userId});
 
         return res.status(200).json({
             message:"Collection deleted Successfully"
         })
-
     } catch (error) {
         console.error("deleteCollection failed",error);
         return res.status(500).json({
-        message:"Internal server error"
-    });
-        
+            message:"Internal server error"
+        });
     }
-
 };
 
 
