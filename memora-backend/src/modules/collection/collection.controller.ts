@@ -279,8 +279,6 @@ export const getSharedCollection=async(req:Request,res:Response)=>{
                 message:"Collection not Found"
             })
         };
-
-        const content = await contentModel.find({ collectionId: collection._id }).sort({ _id: 1 });
         const user=await userModel.findById(collection.userId).select("username");
 
         if(!user){
@@ -288,6 +286,9 @@ export const getSharedCollection=async(req:Request,res:Response)=>{
                 message:"Owner not Found"
             })
         };
+
+        const content = await contentModel.find({ collectionId: collection._id }).sort({ _id: 1 }).select("link type title description");
+        
 
         return res.status(200).json({
             message:"collection Fetched !!",
@@ -297,13 +298,12 @@ export const getSharedCollection=async(req:Request,res:Response)=>{
                     _id:collection._id,
                     title:collection.title,
                     icon:collection.icon,
-                    userId:collection.userId
-                },
+                    },
                 content
             }
         });
     } catch (error) {
-        console.error("getshareCollection failed",error);
+        console.error("getSharedCollection failed",error);
         return res.status(500).json({
             message:"Internal server error"
         });
