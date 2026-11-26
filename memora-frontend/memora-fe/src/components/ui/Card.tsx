@@ -417,7 +417,7 @@ export const Card = ({
     const renderReadOnlyNote = () => {
         if (!descText) {
             return (
-                <div className="w-full mt-auto pt-1 pb-0.5 shrink-0 flex items-center justify-start">
+                <div className="w-full mt-auto pt-1 pb-0.5 shrink-0">
                     <button
                         type="button"
                         onClick={(e) => {
@@ -425,16 +425,16 @@ export const Card = ({
                             setIsEditingDesc(true);
                             setIsNoteExpanded(true);
                         }}
-                        className={`py-1.5 px-3 rounded-xl border transition-all cursor-pointer inline-flex items-center gap-1.5 text-xs font-semibold group/addnote active:scale-95 shadow-xs ${isDark
-                                ? "bg-white/[0.04] hover:bg-purple-500/15 border-white/10 hover:border-purple-500/40 text-purple-300 hover:text-purple-200"
-                                : "bg-gray-50 hover:bg-purple-50 border-gray-200 hover:border-purple-300 text-purple-700 hover:text-purple-900"
+                        className={`w-full py-2 px-3 rounded-xl border border-dashed transition-all cursor-pointer flex items-center justify-center gap-1.5 text-xs font-medium group/addnote active:scale-[0.98] ${isDark
+                                ? "bg-white/[0.02] hover:bg-purple-500/10 border-white/15 hover:border-purple-500/40 text-gray-400 hover:text-purple-300"
+                                : "bg-gray-50/70 hover:bg-purple-50/80 border-gray-200 hover:border-purple-300 text-gray-500 hover:text-purple-700"
                             }`}
                         title="Add note"
                     >
                         <img
                             src="https://img.icons8.com/ios/50/add--v1.png"
                             alt="add--v1"
-                            className={`w-4.5 h-4.5 object-contain transition-transform group-hover/addnote:scale-110 ${isDark ? "invert opacity-95" : "opacity-85"
+                            className={`w-4 h-4 object-contain transition-transform group-hover/addnote:scale-110 ${isDark ? "invert opacity-70 group-hover/addnote:opacity-95" : "opacity-65 group-hover/addnote:opacity-90"
                                 }`}
                         />
                         <span>Add note</span>
@@ -946,12 +946,10 @@ export const Card = ({
                     {(effectiveType === "youtube" || effectiveType === "video") && (
                         <div className="flex flex-col gap-2.5 w-full flex-1 min-h-0 justify-between">
                             <div className="flex flex-col gap-2 min-h-0 flex-1">
-                                {/* 1. Video Thumbnail / Preview (126px when note exists, 142px when empty) */}
+                                {/* 1. Video Thumbnail / Preview */}
                                 <div
                                     onClick={() => setPlayerOpen(true)}
-                                    className={`relative w-full rounded-xl overflow-hidden bg-black/80 border border-white/10 group/thumb cursor-pointer shadow-md transition-all duration-300 shrink-0 ${
-                                        descText ? "h-[126px]" : "h-[142px]"
-                                    }`}
+                                    className="relative w-full h-[128px] rounded-2xl overflow-hidden bg-black/80 border border-white/10 group/thumb cursor-pointer shadow-md transition-all duration-300 shrink-0"
                                 >
                                     {effectiveType === "youtube" && ytThumbnailUrl && !thumbError ? (
                                         <img
@@ -1016,7 +1014,7 @@ export const Card = ({
                                     <button
                                         type="button"
                                         onClick={() => setPlayerOpen(true)}
-                                        className="flex-1 h-7.5 px-3 rounded-lg bg-red-600 hover:bg-red-700 active:scale-95 text-white text-xs font-semibold transition-all flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
+                                        className="flex-1 h-7.5 px-3 rounded-xl bg-red-600 hover:bg-red-700 active:scale-95 text-white text-xs font-semibold transition-all flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
                                     >
                                         <span className="text-[10px]">▶</span>
                                         <span>Watch Video</span>
@@ -1025,7 +1023,7 @@ export const Card = ({
                                         href={link}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        className={`h-7.5 px-3 rounded-lg active:scale-95 text-xs font-medium transition-all flex items-center gap-1.5 cursor-pointer border ${
+                                        className={`h-7.5 px-3 rounded-xl active:scale-95 text-xs font-medium transition-all flex items-center gap-1.5 cursor-pointer border ${
                                             isDark
                                                 ? "bg-white/[0.04] hover:bg-white/10 text-gray-300 hover:text-white border-white/10"
                                                 : "bg-transparent hover:bg-gray-100 text-gray-600 hover:text-gray-900 border-gray-200"
@@ -1140,16 +1138,16 @@ export const Card = ({
 
                     {effectiveType === "pdf" && (
                         <div className="flex flex-col gap-2 h-full w-full flex-1 min-h-0 justify-between">
-                            <div className={`flex-1 min-h-0 flex flex-col rounded-xl border overflow-hidden transition-colors ${isDark
+                            <div className={`flex-1 min-h-0 flex flex-col rounded-2xl border overflow-hidden transition-colors ${isDark
                                     ? "bg-red-950/10 border-red-500/20 text-gray-200 hover:border-red-500/40"
-                                    : "bg-gradient-to-b from-red-50/50 to-orange-50/30 border-red-100/50 text-gray-600 hover:border-red-300"
+                                    : "bg-gray-50/90 border-gray-200/90 text-gray-600 hover:border-red-300"
                                 }`}>
                                 {/* PDF Smart Thumbnail */}
                                 <div
                                     onClick={() => setReaderOpen(true)}
                                     className={`w-full flex-1 min-h-[95px] overflow-hidden relative flex flex-col items-center justify-center gap-2 cursor-pointer group/pdf-thumb ${isDark
                                             ? 'bg-gradient-to-br from-red-950/40 via-[#18181b] to-black'
-                                            : 'bg-gradient-to-br from-red-50 via-white to-red-50/30'
+                                            : 'bg-gray-100/80 p-2'
                                         }`}
                                     title="Click to read PDF document"
                                 >
@@ -1163,7 +1161,9 @@ export const Card = ({
                                                     src={pdfImageUrl}
                                                     alt={title}
                                                     referrerPolicy="no-referrer"
-                                                    className="w-full h-full object-cover object-top origin-top transition-transform duration-300 group-hover/pdf-thumb:scale-105"
+                                                    className={`w-full h-full object-cover object-top origin-top transition-transform duration-300 group-hover/pdf-thumb:scale-105 ${
+                                                        isDark ? "" : "rounded-xl ring-1 ring-black/5 bg-white shadow-xs"
+                                                    }`}
                                                     onError={() => setImgError(true)}
                                                 />
                                             );
@@ -1184,12 +1184,12 @@ export const Card = ({
                                 </div>
 
                                 {/* Action Buttons */}
-                                <div className={`p-1.5 shrink-0 border-t ${isDark ? "border-white/5" : "border-red-100/50"}`}>
+                                <div className={`p-1.5 shrink-0 border-t ${isDark ? "border-white/5" : "border-gray-200/70 bg-white/90"}`}>
                                     <div className="flex items-center gap-2">
                                         <button
                                             type="button"
                                             onClick={() => setReaderOpen(true)}
-                                            className="flex-1 py-1 px-2.5 rounded-lg bg-red-600 hover:bg-red-700 active:scale-95 text-white text-[11px] font-bold transition-all flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
+                                            className="flex-1 py-1 px-2.5 rounded-xl bg-red-600 hover:bg-red-700 active:scale-95 text-white text-[11px] font-bold transition-all flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
                                         >
                                             <img
                                                 width="64"
@@ -1204,7 +1204,7 @@ export const Card = ({
                                             href={link}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className={`py-1 px-2.5 rounded-lg active:scale-95 text-[11px] font-semibold transition-all flex items-center gap-1 cursor-pointer border ${isDark ? "bg-white/10 hover:bg-white/20 text-gray-200 border-transparent" : "bg-white hover:bg-gray-50 text-gray-700 border-gray-200 shadow-xs"
+                                            className={`py-1 px-2.5 rounded-xl active:scale-95 text-[11px] font-semibold transition-all flex items-center gap-1 cursor-pointer border ${isDark ? "bg-white/10 hover:bg-white/20 text-gray-200 border-transparent" : "bg-white hover:bg-gray-50 text-gray-700 border-gray-200 shadow-xs"
                                                 }`}
                                             title="Open Original Link"
                                         >
@@ -1226,7 +1226,7 @@ export const Card = ({
 
                     {isArticle && (
                         <div className="flex flex-col gap-2 h-full w-full flex-1 min-h-0 justify-between">
-                            <div className={`flex-1 min-h-0 flex flex-col rounded-xl border overflow-hidden transition-colors ${isDark
+                            <div className={`flex-1 min-h-0 flex flex-col rounded-2xl border overflow-hidden transition-colors ${isDark
                                     ? "bg-purple-950/10 border-purple-500/20 text-gray-200 hover:border-purple-500/40"
                                     : "bg-gradient-to-b from-purple-50/50 to-indigo-50/30 border-purple-100/50 text-gray-600 hover:border-purple-300"
                                 }`}>
@@ -1270,7 +1270,7 @@ export const Card = ({
                                         <button
                                             type="button"
                                             onClick={(e) => openFloatingBrowser(normalizedLink, e)}
-                                            className="flex-1 py-1 px-2.5 rounded-lg bg-purple-600 hover:bg-purple-700 active:scale-95 text-white text-[11px] font-bold transition-all flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
+                                            className="flex-1 py-1 px-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 active:scale-95 text-white text-[11px] font-bold transition-all flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
                                             title="Preview website in new preview window (unblocked, full website)"
                                         >
                                             <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1284,7 +1284,7 @@ export const Card = ({
                                             href={normalizedLink}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className={`py-1 px-2.5 rounded-lg active:scale-95 text-[11px] font-semibold transition-all flex items-center gap-1 cursor-pointer border ${isDark ? "bg-white/10 hover:bg-white/20 text-gray-200 border-transparent" : "bg-white hover:bg-gray-50 text-gray-700 border-gray-200 shadow-xs"
+                                            className={`py-1 px-2.5 rounded-xl active:scale-95 text-[11px] font-semibold transition-all flex items-center gap-1 cursor-pointer border ${isDark ? "bg-white/10 hover:bg-white/20 text-gray-200 border-transparent" : "bg-white hover:bg-gray-50 text-gray-700 border-gray-200 shadow-xs"
                                                 }`}
                                             title="Open Original Link"
                                         >

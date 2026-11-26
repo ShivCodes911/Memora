@@ -204,7 +204,7 @@ export function Sidebar({
                             : "bg-purple-50 text-purple-700 font-semibold border border-purple-200"
                           : isDark
                             ? "text-gray-400 hover:bg-white/5 hover:text-gray-200"
-                            : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                            : "text-[#55534E] hover:bg-gray-100 hover:text-gray-900"
                       }`}
                     >
                       <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold uppercase shrink-0 ${
