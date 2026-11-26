@@ -1053,50 +1053,84 @@ export const Card = ({
 
                     {effectiveType === "twitter" && (
                         <div className="flex flex-col gap-2 w-full flex-1 min-h-0 justify-between">
-                            {/* Twitter Embed Container with hidden scrollbars and clean framing */}
-                            <div className={`flex-1 min-h-0 overflow-y-auto overflow-x-hidden rounded-xl border flex justify-center [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden p-1 ${isDark ? "bg-black/40 border-white/10 text-white" : "bg-white border-gray-200 text-black"
-                                }`}>
-                                <div className="w-full max-w-full flex justify-center">
-                                    <blockquote className="twitter-tweet m-0" data-theme={isDark ? "dark" : "light"} data-dnt="true">
-                                        <a href={link.replace("x.com", "twitter.com")}></a>
-                                    </blockquote>
-                                </div>
-                            </div>
+                            {/* Unified soft-rounded inner frame (matching PDF & Article cards) */}
+                            <div
+                                className={`flex-1 min-h-0 flex flex-col rounded-2xl border overflow-hidden transition-colors ${
+                                    isDark
+                                        ? "bg-black/40 border-white/10 text-white hover:border-sky-500/35"
+                                        : "bg-gray-50/60 border-gray-200/90 text-black hover:border-sky-300"
+                                }`}
+                            >
+                                {/* Scrollable tweet area inside a clipped viewport */}
+                                <div className="relative flex-1 min-h-0 overflow-hidden">
+                                    <div className="h-full w-full overflow-y-auto overflow-x-hidden px-1.5 pt-1.5 pb-4 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+                                        <div
+                                            className="w-full flex justify-center"
+                                            style={{ zoom: 0.82 }}
+                                        >
+                                            <blockquote
+                                                className="twitter-tweet m-0"
+                                                data-width="250"
+                                                data-theme={isDark ? "dark" : "light"}
+                                                data-dnt="true"
+                                            >
+                                                <a href={link.replace("x.com", "twitter.com")}></a>
+                                            </blockquote>
+                                        </div>
+                                    </div>
 
-                            {/* Action Buttons Row matching Video & PDF cards for perfect symmetry */}
-                            <div className="flex items-center gap-2 shrink-0">
-                                <a
-                                    href={link}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="flex-1 py-1 px-2.5 rounded-lg bg-sky-500 hover:bg-sky-600 active:scale-95 text-white text-[11px] font-bold transition-all flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
-                                >
-                                    <img
-                                        width="50"
-                                        height="50"
-                                        src="https://img.icons8.com/ios/50/twitterx--v2.png"
-                                        alt="twitterx--v2"
-                                        className="w-3.5 h-3.5 object-contain invert brightness-125"
-                                    />
-                                    <span>View on X</span>
-                                </a>
-                                <a
-                                    href={link}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className={`py-1 px-2.5 rounded-lg active:scale-95 text-[11px] font-semibold transition-all flex items-center gap-1 cursor-pointer border ${isDark ? "bg-white/10 hover:bg-white/20 text-gray-200 border-transparent" : "bg-white hover:bg-gray-50 text-gray-700 border-gray-200 shadow-xs"
+                                    {/* Soft gradient fade at the bottom so long tweets don't look chopped */}
+                                    <div
+                                        className={`pointer-events-none absolute inset-x-0 bottom-0 h-5 bg-gradient-to-t ${
+                                            isDark ? "from-[#121212] to-transparent" : "from-white to-transparent"
                                         }`}
-                                    title="Open Original Link"
-                                >
-                                    <span>Open</span>
-                                    <img
-                                        width="24"
-                                        height="24"
-                                        src="https://img.icons8.com/material-outlined/24/external-link.png"
-                                        alt="external-link"
-                                        className={`w-3.5 h-3.5 object-contain ${isDark ? "invert opacity-85" : "opacity-75"}`}
                                     />
-                                </a>
+                                </div>
+
+                                {/* Action Buttons Row tucked cleanly inside the bottom of the rounded frame */}
+                                <div
+                                    className={`p-1.5 shrink-0 border-t ${
+                                        isDark ? "border-white/10 bg-[#18181b]/60" : "border-gray-200/70 bg-white/90"
+                                    }`}
+                                >
+                                    <div className="flex items-center gap-2">
+                                        <a
+                                            href={link}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="flex-1 py-1 px-2.5 rounded-xl bg-sky-500 hover:bg-sky-600 active:scale-95 text-white text-[11px] font-bold transition-all flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
+                                        >
+                                            <img
+                                                width="50"
+                                                height="50"
+                                                src="https://img.icons8.com/ios/50/twitterx--v2.png"
+                                                alt="twitterx--v2"
+                                                className="w-3.5 h-3.5 object-contain invert brightness-125"
+                                            />
+                                            <span>View on X</span>
+                                        </a>
+                                        <a
+                                            href={link}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className={`py-1 px-2.5 rounded-xl active:scale-95 text-[11px] font-semibold transition-all flex items-center gap-1 cursor-pointer border ${
+                                                isDark
+                                                    ? "bg-white/10 hover:bg-white/20 text-gray-200 border-transparent"
+                                                    : "bg-white hover:bg-gray-50 text-gray-700 border-gray-200 shadow-xs"
+                                            }`}
+                                            title="Open Original Link"
+                                        >
+                                            <span>Open</span>
+                                            <img
+                                                width="24"
+                                                height="24"
+                                                src="https://img.icons8.com/material-outlined/24/external-link.png"
+                                                alt="external-link"
+                                                className={`w-3.5 h-3.5 object-contain ${isDark ? "invert opacity-85" : "opacity-75"}`}
+                                            />
+                                        </a>
+                                    </div>
+                                </div>
                             </div>
 
                             {/* Read-only note or placeholder */}
