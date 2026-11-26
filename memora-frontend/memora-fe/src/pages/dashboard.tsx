@@ -286,7 +286,6 @@ export function Dashboard() {
     {
       id: "home",
       label: "Home",
-      count: contents.filter((item) => item.type !== "shared_brain").length,
       icon: (
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
@@ -515,54 +514,55 @@ export function Dashboard() {
       <div className={`flex-1 h-full flex flex-col min-w-0 ${isDark ? "bg-[#191919]" : "bg-white"} overflow-hidden relative transition-[padding,margin] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]`}>
 
         {/* Top Header Bar */}
-        <TopBar
-          onHamburgerClick={() => {
-            toggleSidebar();
-            setPreviewOpen(false);
-          }}
-          onHamburgerMouseEnter={handleHamburgerMouseEnter}
-          onHamburgerMouseLeave={handleHamburgerMouseLeave}
-          isSidebarOpen={sidebarOpen}
-          onAddMemory={() => setModalOpen(true)}
-          onShareBrain={handleShare}
-          searchQuery={searchQuery}
-          onSearchChange={setSearchQuery}
-          activeFilter={typeFilter}
-          onFilterChange={setTypeFilter}
-          filterCounts={filterCounts}
-          isDark={isDark}
-          title={
-            currentWorkspace !== "personal" && sharedWorkspaceData
-              ? `${sharedWorkspaceData.username}'s Brain`
-              : activeTab === "collections"
-                ? selectedCollection ? (
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => navigateToCollection(null)}
-                      className={`transition-colors cursor-pointer ${isDark ? "text-gray-400 hover:text-white" : "text-gray-500 hover:text-purple-700 font-medium"
-                        }`}
-                    >
-                      Collections
-                    </button>
-                    <span className={isDark ? "text-gray-600" : "text-gray-400"}>/</span>
-                    <span className={`font-semibold ${isDark ? "text-gray-200" : "text-gray-900 font-bold"}`}>
-                      {selectedCollection.title}
-                    </span>
-                  </div>
-                ) : (
-                  "Collections"
-                )
-                : activeTab === "tags"
-                  ? "Tags"
-                  : activeTab === "favorites"
-                    ? "Favorites"
-                    : activeTab === "settings"
-                      ? "Settings"
-                      : undefined
-          }
-          onOpenTree={() => setIsTreeDrawerOpen(true)}
-        />
+        {(() => {
+          const isViewingAllCollections =
+            activeTab === "collections" && !selectedCollection && currentWorkspace === "personal";
+
+          return (
+            <TopBar
+              onHamburgerClick={() => {
+                toggleSidebar();
+                setPreviewOpen(false);
+              }}
+              onHamburgerMouseEnter={handleHamburgerMouseEnter}
+              onHamburgerMouseLeave={handleHamburgerMouseLeave}
+              isSidebarOpen={sidebarOpen}
+              onAddMemory={() => setModalOpen(true)}
+              onShareBrain={handleShare}
+              searchQuery={searchQuery}
+              onSearchChange={isViewingAllCollections ? undefined : setSearchQuery}
+              activeFilter={typeFilter}
+              onFilterChange={isViewingAllCollections ? undefined : setTypeFilter}
+              filterCounts={filterCounts}
+              isDark={isDark}
+              title={
+                currentWorkspace !== "personal" && sharedWorkspaceData
+                  ? `${sharedWorkspaceData.username}'s Brain`
+                  : activeTab === "collections"
+                    ? selectedCollection ? (
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => navigateToCollection(null)}
+                          className={`transition-colors cursor-pointer ${isDark ? "text-gray-400 hover:text-white" : "text-gray-500 hover:text-purple-700 font-medium"
+                            }`}
+                        >
+                          Collections
+                        </button>
+                        <span className={isDark ? "text-gray-600" : "text-gray-400"}>/</span>
+                        <span className={`font-semibold ${isDark ? "text-gray-200" : "text-gray-900 font-bold"}`}>
+                          {selectedCollection.title}
+                        </span>
+                      </div>
+                    ) : (
+                      "Collections"
+                    )
+                    : undefined
+              }
+              onOpenTree={isViewingAllCollections ? undefined : () => setIsTreeDrawerOpen(true)}
+            />
+          );
+        })()}
 
         {/* Viewport Canvas */}
         <main className="flex-1 w-full h-full overflow-y-auto p-6 sm:p-10 relative">

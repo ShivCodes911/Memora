@@ -631,7 +631,7 @@ export const Card = ({
 
     return (
         <>
-            <div className={`rounded-2xl border p-5 shadow-sm transition-[shadow,transform] duration-300 ease-out flex flex-col w-full group relative overflow-hidden h-[360px] ${isPanelOpen ? "" : "hover:shadow-xl hover:-translate-y-1"
+            <div className={`rounded-2xl border p-3.5 shadow-sm transition-[shadow,transform] duration-300 ease-out flex flex-col w-full group relative overflow-hidden h-[360px] ${isPanelOpen ? "" : "hover:shadow-xl hover:-translate-y-1"
                 } ${isDark
                     ? "bg-[#1e1d1b] border-white/10 text-gray-100 hover:border-purple-500/40 shadow-black/40"
                     : "bg-white border-gray-200/80 text-gray-800"
@@ -944,12 +944,12 @@ export const Card = ({
                 {/* Card Content Body */}
                 <div className="pt-2 flex flex-col flex-1 min-h-0 overflow-hidden">
                     {(effectiveType === "youtube" || effectiveType === "video") && (
-                        <div className="flex flex-col gap-2.5 w-full flex-1 min-h-0 justify-between">
+                        <div className="flex flex-col gap-2 w-full flex-1 min-h-0 justify-between">
                             <div className="flex flex-col gap-2 min-h-0 flex-1">
                                 {/* 1. Video Thumbnail / Preview */}
                                 <div
                                     onClick={() => setPlayerOpen(true)}
-                                    className="relative w-full h-[128px] rounded-2xl overflow-hidden bg-black/80 border border-white/10 group/thumb cursor-pointer shadow-md transition-all duration-300 shrink-0"
+                                    className="relative w-full flex-1 min-h-[84px] rounded-2xl overflow-hidden bg-black/80 border border-white/10 group/thumb cursor-pointer shadow-md transition-all duration-300"
                                 >
                                     {effectiveType === "youtube" && ytThumbnailUrl && !thumbError ? (
                                         <img
@@ -1042,10 +1042,8 @@ export const Card = ({
                                 </div>
                             </div>
 
-                            {/* 4. Read-only note or placeholder (Preserved exactly as current) */}
-                            <div className="pt-1.5 shrink-0">
-                                {renderReadOnlyNote()}
-                            </div>
+                            {/* 4. Read-only note or placeholder */}
+                            {renderReadOnlyNote()}
                         </div>
                     )}
 

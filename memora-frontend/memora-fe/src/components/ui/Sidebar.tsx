@@ -80,10 +80,10 @@ export function Sidebar({
               <button
                 type="button"
                 onClick={onToggleTheme}
-                className={`p-1.5 rounded-md transition-colors cursor-pointer ${
+                className={`group relative p-1.5 rounded-md transition-colors cursor-pointer ${
                   isDark ? "text-gray-400 hover:text-white hover:bg-white/10" : "text-gray-500 hover:text-gray-800 hover:bg-gray-200"
                 }`}
-                title="Toggle Theme"
+                aria-label="Toggle Theme"
               >
                 {isDark ? (
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -94,19 +94,26 @@ export function Sidebar({
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
                   </svg>
                 )}
+                <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 hidden group-hover:flex flex-col items-center z-50 pointer-events-none whitespace-nowrap px-2.5 py-1.5 rounded-lg bg-[#202022] border border-white/10 text-white shadow-xl animate-in fade-in zoom-in-95 duration-100">
+                  <span className="text-[11px] font-semibold leading-tight">{isDark ? "Light mode" : "Dark mode"}</span>
+                </div>
               </button>
             )}
             <button
               type="button"
               onClick={onClose}
-              className={`p-1.5 rounded-md transition-colors cursor-pointer ${
+              className={`group relative p-1.5 rounded-md transition-colors cursor-pointer ${
                 isDark ? "text-gray-400 hover:text-white hover:bg-white/10" : "text-gray-500 hover:text-gray-800 hover:bg-gray-200"
               }`}
-              title="Close / Unlock sidebar (Ctrl+\)"
+              aria-label="Close sidebar"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
               </svg>
+              <div className="absolute top-full mt-2 right-0 hidden group-hover:flex flex-col items-start z-50 pointer-events-none whitespace-nowrap px-2.5 py-1.5 rounded-lg bg-[#202022] border border-white/10 text-white shadow-xl animate-in fade-in zoom-in-95 duration-100">
+                <span className="text-[11px] font-semibold leading-tight">Close sidebar</span>
+                <span className="text-[10px] text-gray-400 font-mono leading-tight mt-0.5">Ctrl+\</span>
+              </div>
             </button>
           </div>
         </div>
