@@ -58,7 +58,7 @@ export function Sidebar({
       <aside
         className={`fixed lg:static top-0 left-0 bottom-0 z-40 w-[260px] ${
           isDark ? "bg-[#202020] text-gray-200 border-white/5" : "bg-[#F9F8F7] text-[#55534E] border-gray-200"
-        } border-r flex flex-col justify-between shrink-0 transition-all duration-300 ease-out ${
+        } border-r flex flex-col justify-between shrink-0 transition-[margin,transform] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${
           open ? "translate-x-0 lg:ml-0" : "-translate-x-full lg:translate-x-0 lg:-ml-[260px]"
         }`}
       >
@@ -80,10 +80,10 @@ export function Sidebar({
               <button
                 type="button"
                 onClick={onToggleTheme}
-                className={`p-1.5 rounded-md transition-colors cursor-pointer ${
+                className={`group relative p-1.5 rounded-md transition-colors cursor-pointer ${
                   isDark ? "text-gray-400 hover:text-white hover:bg-white/10" : "text-gray-500 hover:text-gray-800 hover:bg-gray-200"
                 }`}
-                title="Toggle Theme"
+                aria-label="Toggle Theme"
               >
                 {isDark ? (
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -94,19 +94,26 @@ export function Sidebar({
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
                   </svg>
                 )}
+                <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 hidden group-hover:flex flex-col items-center z-50 pointer-events-none whitespace-nowrap px-2.5 py-1.5 rounded-lg bg-[#202022] border border-white/10 text-white shadow-xl animate-in fade-in zoom-in-95 duration-100">
+                  <span className="text-[11px] font-semibold leading-tight">{isDark ? "Light mode" : "Dark mode"}</span>
+                </div>
               </button>
             )}
             <button
               type="button"
               onClick={onClose}
-              className={`p-1.5 rounded-md transition-colors cursor-pointer ${
+              className={`group relative p-1.5 rounded-md transition-colors cursor-pointer ${
                 isDark ? "text-gray-400 hover:text-white hover:bg-white/10" : "text-gray-500 hover:text-gray-800 hover:bg-gray-200"
               }`}
-              title="Close / Unlock sidebar (Ctrl+\)"
+              aria-label="Close sidebar"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
               </svg>
+              <div className="absolute top-full mt-2 right-0 hidden group-hover:flex flex-col items-start z-50 pointer-events-none whitespace-nowrap px-2.5 py-1.5 rounded-lg bg-[#202022] border border-white/10 text-white shadow-xl animate-in fade-in zoom-in-95 duration-100">
+                <span className="text-[11px] font-semibold leading-tight">Close sidebar</span>
+                <span className="text-[10px] text-gray-400 font-mono leading-tight mt-0.5">Ctrl+\</span>
+              </div>
             </button>
           </div>
         </div>
@@ -204,7 +211,7 @@ export function Sidebar({
                             : "bg-purple-50 text-purple-700 font-semibold border border-purple-200"
                           : isDark
                             ? "text-gray-400 hover:bg-white/5 hover:text-gray-200"
-                            : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                            : "text-[#55534E] hover:bg-gray-100 hover:text-gray-900"
                       }`}
                     >
                       <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold uppercase shrink-0 ${

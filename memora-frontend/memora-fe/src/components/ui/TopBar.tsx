@@ -26,6 +26,8 @@ export interface TopBarProps {
   onFilterChange?: (filterId: string) => void;
   filterCounts?: FilterCounts;
   onOpenTree?: () => void;
+  isSelectMode?: boolean;
+  onToggleSelectMode?: () => void;
 }
 
 const FILTER_OPTIONS = [
@@ -109,6 +111,8 @@ export function TopBar({
   onFilterChange,
   filterCounts,
   onOpenTree,
+  isSelectMode = false,
+  onToggleSelectMode,
 }: TopBarProps) {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const filterRef = useRef<HTMLDivElement>(null);
@@ -126,19 +130,31 @@ export function TopBar({
     }
   }, [isFilterOpen]);
 
+  const renderIconTooltip = (label: string, hint?: string) => (
+    <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 hidden group-hover:flex flex-col items-center z-50 pointer-events-none whitespace-nowrap px-2.5 py-1.5 rounded-lg bg-[#202022] border border-white/10 text-white shadow-xl animate-in fade-in zoom-in-95 duration-100">
+      <span className="text-[11px] font-semibold leading-tight">{label}</span>
+      {hint && <span className="text-[10px] text-gray-400 font-mono leading-tight mt-0.5">{hint}</span>}
+    </div>
+  );
+
   return (
     <header
       className={`w-full h-14 ${isDark ? "bg-[#191919]" : "bg-white"} px-4 flex items-center justify-between shrink-0 select-none transition-colors duration-300 ${className}`}
     >
       {/* Left: Far-left Hamburger Menu Icon */}
       <div className="flex items-center gap-0">
-        <div className={`transition-all duration-300 ${isSidebarOpen ? "opacity-0 pointer-events-none w-0 overflow-hidden" : "opacity-100 w-10"}`}>
+        <div className={`transition-all duration-300 relative group ${isSidebarOpen ? "opacity-0 pointer-events-none w-0 overflow-hidden" : "opacity-100 w-10"}`}>
           <HamburgerButton
             onClick={onHamburgerClick}
             onMouseEnter={onHamburgerMouseEnter}
             onMouseLeave={onHamburgerMouseLeave}
             isOpen={isSidebarOpen}
           />
+          {/* Notion Tooltip on Hover */}
+          <div className="absolute left-full ml-2.5 top-1/2 -translate-y-1/2 hidden group-hover:flex flex-col items-start z-50 pointer-events-none whitespace-nowrap px-2.5 py-1 rounded-lg bg-[#202022] border border-white/10 text-white shadow-xl animate-in fade-in zoom-in-95 duration-100">
+            <span className="text-[11px] font-semibold leading-tight">Lock sidebar open</span>
+            <span className="text-[9px] text-gray-400 font-mono">Ctrl+\</span>
+          </div>
         </div>
         <div className={`text-sm font-medium transition-all whitespace-nowrap flex items-center gap-1.5 ${
           isDark ? "text-gray-400 opacity-75 hover:opacity-100" : "text-gray-700 hover:text-gray-900"
@@ -175,150 +191,187 @@ export function TopBar({
       </div>
 
       {/* Right: Subtle Actions */}
-      <div className="flex items-center gap-2">
-        {/* Filter Option (on left side of Share) */}
-        {onFilterChange && (
-          <div className="relative" ref={filterRef}>
+      <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-1">
+          {/* Filter Option */}
+          {onFilterChange && (
+            <div className="relative" ref={filterRef}>
+              <button
+                type="button"
+                onClick={() => setIsFilterOpen((prev) => !prev)}
+                className={`group relative w-8 h-8 rounded-full transition-all duration-200 cursor-pointer flex items-center justify-center active:scale-95 ${
+                  activeFilter !== "all" || isFilterOpen
+                    ? (isDark
+                        ? "bg-purple-500/15 ring-1 ring-purple-500/20"
+                        : "bg-purple-100/70 ring-1 ring-purple-300/50")
+                    : (isDark
+                        ? "bg-transparent hover:bg-white/[0.09]"
+                        : "bg-transparent hover:bg-gray-200/65")
+                }`}
+                aria-label="Filter Content"
+              >
+                <img
+                  width="50"
+                  height="50"
+                  src="https://img.icons8.com/ios/50/horizontal-settings-mixer--v1.png"
+                  alt="horizontal-settings-mixer--v1"
+                  className={`w-4 h-4 object-contain transition-all ${
+                    isDark ? "invert opacity-85 group-hover:opacity-100" : "opacity-75 group-hover:opacity-100"
+                  } ${isFilterOpen ? "rotate-90" : ""}`}
+                />
+                {activeFilter !== "all" && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-purple-500 absolute top-1.5 right-1.5 animate-pulse" />
+                )}
+                {!isFilterOpen && renderIconTooltip("Filter")}
+              </button>
+
+              {/* Filter Dropdown Popover */}
+              {isFilterOpen && (
+                <div
+                  className={`absolute right-0 top-full mt-2 w-56 rounded-2xl border shadow-2xl z-50 p-1.5 flex flex-col gap-0.5 animate-in fade-in zoom-in-95 duration-150 backdrop-blur-xl ${
+                    isDark
+                      ? "bg-[#1f1e1c]/95 border-white/10 text-gray-200 shadow-black/80"
+                      : "bg-white/95 border-gray-200 text-gray-800 shadow-xl"
+                  }`}
+                >
+                  <div className="flex items-center justify-between px-2.5 py-1.5 border-b border-white/5 mb-1">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                      Filter Content
+                    </span>
+                    {activeFilter !== "all" && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onFilterChange("all");
+                          setIsFilterOpen(false);
+                        }}
+                        className="text-[10px] font-bold text-purple-400 hover:text-purple-300 cursor-pointer"
+                      >
+                        Reset
+                      </button>
+                    )}
+                  </div>
+
+                  {FILTER_OPTIONS.map((opt) => {
+                    const isSelected = activeFilter === opt.id;
+                    const count = filterCounts ? (filterCounts as unknown as Record<string, number>)[opt.id] : undefined;
+                    return (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => {
+                          onFilterChange(opt.id);
+                          setIsFilterOpen(false);
+                        }}
+                        className={`w-full px-2.5 py-2 rounded-xl text-xs font-medium flex items-center justify-between transition-all cursor-pointer ${
+                          isSelected
+                            ? (isDark
+                                ? "bg-purple-500/25 text-purple-200 font-semibold"
+                                : "bg-purple-100/70 text-purple-800 font-semibold")
+                            : (isDark
+                                ? "hover:bg-white/[0.06] text-gray-300 hover:text-white"
+                                : "hover:bg-gray-100 text-gray-700 hover:text-gray-900")
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <span className="w-4 h-4 flex items-center justify-center shrink-0">
+                            {opt.icon}
+                          </span>
+                          <span className="truncate">{opt.label}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {count !== undefined && (
+                            <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-mono ${
+                              isSelected
+                                ? (isDark ? "bg-purple-500/40 text-purple-200" : "bg-purple-200 text-purple-800")
+                                : (isDark ? "bg-white/5 text-gray-400" : "bg-gray-100 text-gray-500")
+                            }`}>
+                              {count}
+                            </span>
+                          )}
+                          {isSelected && (
+                            <svg className="w-3.5 h-3.5 text-purple-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
+                            </svg>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {onOpenTree && (
             <button
               type="button"
-              onClick={() => setIsFilterOpen((prev) => !prev)}
-              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all cursor-pointer border flex items-center gap-1.5 active:scale-95 ${
-                activeFilter !== "all"
-                  ? (isDark 
-                      ? "bg-purple-500/20 text-purple-300 border-purple-500/40 shadow-xs" 
-                      : "bg-purple-50 text-purple-700 border-purple-300 shadow-xs")
-                  : (isDark 
-                      ? "bg-[#202020] hover:bg-[#262626] text-gray-300 hover:text-white border-white/5" 
-                      : "bg-white hover:bg-gray-50 text-gray-700 hover:text-gray-900 border-gray-200 shadow-sm")
+              onClick={onOpenTree}
+              className={`group relative w-8 h-8 rounded-full transition-all duration-200 cursor-pointer flex items-center justify-center active:scale-95 ${
+                isDark
+                  ? "bg-transparent hover:bg-white/[0.09]"
+                  : "bg-transparent hover:bg-gray-200/65"
               }`}
-              title="Filter Content"
+              aria-label="Open Folder Tree Directory"
+            >
+              <svg
+                className={`w-4 h-4 transition-opacity ${
+                  isDark ? "text-white opacity-85 group-hover:opacity-100" : "text-black opacity-75 group-hover:opacity-100"
+                }`}
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 2H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z" />
+                <path d="M2 10h20" />
+              </svg>
+              {renderIconTooltip("Folder tree")}
+            </button>
+          )}
+
+          {onToggleSelectMode && (
+            <button
+              type="button"
+              onClick={onToggleSelectMode}
+              className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer border flex items-center gap-1.5 active:scale-95 ${
+                isSelectMode
+                  ? "bg-purple-600 text-white border-purple-600 shadow-sm"
+                  : isDark
+                    ? "bg-[#202020] hover:bg-[#262626] text-gray-300 hover:text-white border-white/5"
+                    : "bg-white hover:bg-gray-50 text-gray-700 hover:text-gray-900 border-gray-200 shadow-sm"
+              }`}
+              title="Toggle Select Mode"
+            >
+              <svg className={`w-3.5 h-3.5 ${isSelectMode ? "text-white" : "text-purple-400"}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+              </svg>
+              <span className="hidden sm:inline">{isSelectMode ? "Selecting" : "Select"}</span>
+            </button>
+          )}
+
+          {!title && onShareBrain && (
+            <button
+              type="button"
+              onClick={onShareBrain}
+              className={`group relative w-8 h-8 rounded-full transition-all duration-200 cursor-pointer flex items-center justify-center active:scale-95 ${
+                isDark
+                  ? "bg-transparent hover:bg-white/[0.09]"
+                  : "bg-transparent hover:bg-gray-200/65"
+              }`}
+              aria-label="Copy brain link"
             >
               <img
-                width="50"
-                height="50"
-                src="https://img.icons8.com/ios/50/horizontal-settings-mixer--v1.png"
-                alt="horizontal-settings-mixer--v1"
-                className={`w-3.5 h-3.5 object-contain transition-transform ${
-                  isDark ? "invert opacity-90" : "opacity-75"
-                } ${isFilterOpen ? "rotate-90" : ""}`}
+                width="24"
+                height="24"
+                src="https://img.icons8.com/forma-regular-filled/24/link.png"
+                alt="link"
+                className={`w-4 h-4 object-contain transition-opacity ${isDark ? "invert opacity-85 group-hover:opacity-100" : "opacity-75 group-hover:opacity-100"}`}
               />
-              <span className="hidden sm:inline text-xs font-semibold">Filter</span>
-              {activeFilter !== "all" && (
-                <span className="w-1.5 h-1.5 rounded-full bg-purple-500 animate-pulse" />
-              )}
+              {renderIconTooltip("Copy link", "Share brain")}
             </button>
-
-            {/* Filter Dropdown Popover */}
-            {isFilterOpen && (
-              <div
-                className={`absolute right-0 top-full mt-2 w-56 rounded-2xl border shadow-2xl z-50 p-1.5 flex flex-col gap-0.5 animate-in fade-in zoom-in-95 duration-150 backdrop-blur-xl ${
-                  isDark 
-                    ? "bg-[#1f1e1c]/95 border-white/10 text-gray-200 shadow-black/80" 
-                    : "bg-white/95 border-gray-200 text-gray-800 shadow-xl"
-                }`}
-              >
-                <div className="flex items-center justify-between px-2.5 py-1.5 border-b border-white/5 mb-1">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
-                    Filter Content
-                  </span>
-                  {activeFilter !== "all" && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        onFilterChange("all");
-                        setIsFilterOpen(false);
-                      }}
-                      className="text-[10px] font-bold text-purple-400 hover:text-purple-300 cursor-pointer"
-                    >
-                      Reset
-                    </button>
-                  )}
-                </div>
-
-                {FILTER_OPTIONS.map((opt) => {
-                  const isSelected = activeFilter === opt.id;
-                  const count = filterCounts ? (filterCounts as unknown as Record<string, number>)[opt.id] : undefined;
-                  return (
-                    <button
-                      key={opt.id}
-                      type="button"
-                      onClick={() => {
-                        onFilterChange(opt.id);
-                        setIsFilterOpen(false);
-                      }}
-                      className={`w-full px-2.5 py-2 rounded-xl text-xs font-medium flex items-center justify-between transition-all cursor-pointer ${
-                        isSelected
-                          ? (isDark 
-                              ? "bg-purple-500/25 text-purple-200 font-semibold" 
-                              : "bg-purple-100/70 text-purple-800 font-semibold")
-                          : (isDark 
-                              ? "hover:bg-white/[0.06] text-gray-300 hover:text-white" 
-                              : "hover:bg-gray-100 text-gray-700 hover:text-gray-900")
-                      }`}
-                    >
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <span className="w-4 h-4 flex items-center justify-center shrink-0">
-                          {opt.icon}
-                        </span>
-                        <span className="truncate">{opt.label}</span>
-                      </div>
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        {count !== undefined && (
-                          <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-mono ${
-                            isSelected 
-                              ? (isDark ? "bg-purple-500/40 text-purple-200" : "bg-purple-200 text-purple-800")
-                              : (isDark ? "bg-white/5 text-gray-400" : "bg-gray-100 text-gray-500")
-                          }`}>
-                            {count}
-                          </span>
-                        )}
-                        {isSelected && (
-                          <svg className="w-3.5 h-3.5 text-purple-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
-                          </svg>
-                        )}
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        )}
-
-        {onOpenTree && (
-          <button
-            type="button"
-            onClick={onOpenTree}
-            className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer border flex items-center gap-1.5 ${
-              isDark 
-                ? "bg-[#202020] hover:bg-[#262626] text-gray-300 hover:text-white border-white/5" 
-                : "bg-white hover:bg-gray-50 text-gray-700 hover:text-gray-900 border-gray-200 shadow-sm"
-            }`}
-            title="Open Folder Tree Directory"
-          >
-            <svg className="w-3.5 h-3.5 text-purple-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 2H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z" />
-              <path d="M2 10h20" />
-            </svg>
-            <span className="hidden sm:inline">Tree</span>
-          </button>
-        )}
-
-        {!title && onShareBrain && (
-          <button
-            type="button"
-            onClick={onShareBrain}
-            className={`px-3.5 py-1.5 rounded-md text-sm font-medium transition-all cursor-pointer border ${
-              isDark 
-                ? "bg-[#202020] hover:bg-[#262626] text-gray-300 hover:text-white border-white/5" 
-                : "bg-white hover:bg-gray-50 text-gray-700 hover:text-gray-900 border-gray-200 shadow-sm"
-            }`}
-            title="Share Brain Link"
-          >
-            Share
-          </button>
-        )}
+          )}
+        </div>
 
         {!title && onAddMemory && (
           <button

@@ -49,7 +49,13 @@ export function Dashboard() {
   const [sharingCollection, setSharingCollection] = useState<Collection | null>(null);
   const [isTreeDrawerOpen, setIsTreeDrawerOpen] = useState(false);
   const [highlightedCardId, setHighlightedCardId] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
   const [searchParams, setSearchParams] = useSearchParams();
+
+  // Bulk Selection State
+  const [isSelectMode, setIsSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
 
   // Unified collection navigator that updates both state and browser history
   const navigateToCollection = (col: Collection | null) => {
@@ -114,31 +120,43 @@ export function Dashboard() {
     }
   }, [currentWorkspace]);
 
+  // Smooth View-Transition sidebar toggle
+  const toggleSidebar = (force?: boolean) => {
+    const nextVal = force !== undefined ? force : !sidebarOpen;
+    if (typeof document !== "undefined" && "startViewTransition" in document) {
+      document.startViewTransition(() => {
+        setSidebarOpen(nextVal);
+      });
+    } else {
+      setSidebarOpen(nextVal);
+    }
+  };
+
   // Keyboard shortcut: Ctrl+\ or Cmd+\ toggles sidebar (shortcut)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === "\\") {
         e.preventDefault();
-        setSidebarOpen((prev) => !prev);
+        toggleSidebar();
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
+  }, [sidebarOpen]);
 
-  // Hover preview handlers with micro delay
+  // Hover preview handlers with micro delay (smooth hysteresis)
   const handleHamburgerMouseEnter = () => {
     if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
     hoverTimerRef.current = setTimeout(() => {
       if (!sidebarOpen) setPreviewOpen(true);
-    }, 150);
+    }, 120);
   };
 
   const handleHamburgerMouseLeave = () => {
     if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
     hoverTimerRef.current = setTimeout(() => {
       setPreviewOpen(false);
-    }, 200);
+    }, 220);
   };
 
   const showToast = (msg: string) => {
@@ -161,6 +179,69 @@ export function Dashboard() {
       console.error("Delete failed", err);
     }
   }
+
+  const handleToggleSelect = (id: string) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
+  const handleStartSelect = (id: string) => {
+    setIsSelectMode(true);
+    setSelectedIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
+  };
+
+  const handleSelectAllVisible = () => {
+    const currentCardIds = paginatedContents.map((c) => c._id);
+    const allSelected = currentCardIds.length > 0 && currentCardIds.every((id) => selectedIds.includes(id));
+
+    if (allSelected) {
+      // Deselect all on current visible page
+      setSelectedIds((prev) => prev.filter((id) => !currentCardIds.includes(id)));
+    } else {
+      // Select all on current page
+      setSelectedIds((prev) => Array.from(new Set([...prev, ...currentCardIds])));
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.length === 0) return;
+
+    const count = selectedIds.length;
+    if (!window.confirm(`Are you sure you want to delete ${count} ${count === 1 ? "note" : "notes"}?`)) {
+      return;
+    }
+
+    setIsBulkDeleting(true);
+    try {
+      const token = localStorage.getItem("token");
+      const CHUNK_SIZE = 100; // backend schema enforces max 100 IDs per call
+      let totalDeleted = 0;
+
+      for (let i = 0; i < selectedIds.length; i += CHUNK_SIZE) {
+        const chunk = selectedIds.slice(i, i + CHUNK_SIZE);
+        const res = await axios.post(
+          `${BACKEND_URL}/api/v1/content/delete-many`,
+          { ids: chunk },
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+        totalDeleted += res.data?.deletedCount ?? chunk.length;
+      }
+
+      showToast(`${totalDeleted} ${totalDeleted === 1 ? "memory" : "memories"} deleted successfully`);
+      setSelectedIds([]);
+      setIsSelectMode(false);
+      refresh();
+    } catch (err: any) {
+      showToast(err?.response?.data?.message || "Failed to delete notes");
+    } finally {
+      setIsBulkDeleting(false);
+    }
+  };
 
   async function handleShare() {
     try {
@@ -205,7 +286,6 @@ export function Dashboard() {
     {
       id: "home",
       label: "Home",
-      count: contents.filter((item) => item.type !== "shared_brain").length,
       icon: (
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
@@ -222,37 +302,16 @@ export function Dashboard() {
         </svg>
       ),
     },
-    {
-      id: "tags",
-      label: "Tags",
-      icon: (
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M7 7h.01M7 3h5a1 1 0 01.707.293l7 7a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0l-7-7A1 1 0 013 8V4a1 1 0 011-1z" />
-        </svg>
-      ),
-    },
-    {
-      id: "favorites",
-      label: "Favorites",
-      icon: (
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-        </svg>
-      ),
-    },
-    {
-      id: "settings",
-      label: "Settings",
-      icon: (
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-        </svg>
-      ),
-    },
   ];
 
   const [typeFilter, setTypeFilter] = useState<string>("all");
+
+  // Reset pagination to page 1 on filter, search, tab, or collection changes
+  useEffect(() => {
+    if (!highlightedCardId) {
+      setCurrentPage(1);
+    }
+  }, [selectedCollection, activeTab, searchQuery, typeFilter]);
 
   const sharedBrains = useMemo(() => {
     const raw = contents.filter((item) => item.type === "shared_brain");
@@ -355,7 +414,7 @@ export function Dashboard() {
     return true;
   });
 
-  // Responsive Column Distribution (Adds +1 column when side panel is closed to preserve card size)
+  // Responsive Column Distribution: 5 cards/row when closed, 4 cards/row when open
   const [numCols, setNumCols] = useState(4);
   useEffect(() => {
     const updateCols = () => {
@@ -368,20 +427,20 @@ export function Dashboard() {
         return;
       }
 
-      // On desktop, adjust column count based on whether the sidebar is open
       if (sidebarOpen) {
         if (w >= 2100) setNumCols(5);
         else if (w >= 1400) setNumCols(4);
         else if (w >= 1080) setNumCols(3);
         else setNumCols(2);
       } else {
-        // When side panel is closed (+260px available width), add 1 more card space per row!
+        // 5 cards per row when sidebar is closed (+260px space available)
         if (w >= 2100) setNumCols(6);
         else if (w >= 1400) setNumCols(5);
         else if (w >= 1080) setNumCols(4);
         else setNumCols(3);
       }
     };
+
     updateCols();
     window.addEventListener("resize", updateCols);
     return () => window.removeEventListener("resize", updateCols);
@@ -390,10 +449,16 @@ export function Dashboard() {
   // Sort chronologically ascending (_id ascending) so any newly added item goes to the last
   const sortedContents = [...filteredContents].sort((a, b) => (a._id > b._id ? 1 : a._id < b._id ? -1 : 0));
 
-  const columns: (typeof sortedContents)[] = Array.from({ length: numCols }, () => []);
-  sortedContents.forEach((item, idx) => {
-    columns[idx % numCols].push(item);
-  });
+  // Stable 20 cards per page on desktop:
+  // Closed = 5 cols x 4 rows (20 cards)
+  // Open   = 4 cols x 5 rows (20 cards)
+  // Perfectly balanced; no cards get evicted between pages on sidebar toggle!
+  const itemsPerPage = numCols >= 4 ? 20 : Math.max(1, numCols * 5);
+  const totalPages = Math.max(1, Math.ceil(sortedContents.length / itemsPerPage));
+  const safeCurrentPage = Math.min(Math.max(1, currentPage), totalPages);
+
+  const startIndex = (safeCurrentPage - 1) * itemsPerPage;
+  const paginatedContents = sortedContents.slice(startIndex, startIndex + itemsPerPage);
 
   return (
     <div className={`h-screen w-screen ${isDark ? "bg-[#191919] text-gray-200" : "bg-white text-gray-900"} font-sans flex overflow-hidden relative transition-colors duration-300`}>
@@ -401,7 +466,7 @@ export function Dashboard() {
       {/* ── Left Navigation Panel (Sidebar Drawer / Flex Sibling) ──── */}
       <Sidebar
         open={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
+        onClose={() => toggleSidebar(false)}
         activeTab={activeTab}
         onSelectTab={(tabId) => {
           setActiveTab(tabId);
@@ -423,6 +488,7 @@ export function Dashboard() {
         }}
       />
 
+
       {/* ── Hover Navigation Preview (Floats without pushing content) ── */}
       <SidebarPreview
         visible={previewOpen && !sidebarOpen}
@@ -430,9 +496,7 @@ export function Dashboard() {
           if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
           setPreviewOpen(true);
         }}
-        onMouseLeave={() => {
-          setPreviewOpen(false);
-        }}
+        onMouseLeave={handleHamburgerMouseLeave}
         items={NAV_ITEMS}
         activeTab={activeTab}
         onSelectTab={(tabId) => {
@@ -440,65 +504,65 @@ export function Dashboard() {
           setPreviewOpen(false);
         }}
         onLockSidebar={() => {
-          setSidebarOpen(true);
+          toggleSidebar(true);
           setPreviewOpen(false);
         }}
         isDark={isDark}
       />
 
       {/* ── Main Workspace Window (TopBar + Content Area) ──────────── */}
-      <div className={`flex-1 h-full flex flex-col min-w-0 ${isDark ? "bg-[#191919]" : "bg-white"} overflow-hidden relative transition-all duration-300 ease-out`}>
+      <div className={`flex-1 h-full flex flex-col min-w-0 ${isDark ? "bg-[#191919]" : "bg-white"} overflow-hidden relative transition-[padding,margin] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]`}>
 
         {/* Top Header Bar */}
-        <TopBar
-          onHamburgerClick={() => {
-            setSidebarOpen((prev) => !prev);
-            setPreviewOpen(false);
-          }}
-          onHamburgerMouseEnter={handleHamburgerMouseEnter}
-          onHamburgerMouseLeave={handleHamburgerMouseLeave}
-          isSidebarOpen={sidebarOpen}
-          onAddMemory={() => setModalOpen(true)}
-          onShareBrain={handleShare}
-          searchQuery={searchQuery}
-          onSearchChange={setSearchQuery}
-          activeFilter={typeFilter}
-          onFilterChange={setTypeFilter}
-          filterCounts={filterCounts}
-          isDark={isDark}
-          title={
-            currentWorkspace !== "personal" && sharedWorkspaceData
-              ? `${sharedWorkspaceData.username}'s Brain`
-              : activeTab === "collections"
-              ? selectedCollection ? (
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => navigateToCollection(null)}
-                      className={`transition-colors cursor-pointer ${
-                        isDark ? "text-gray-400 hover:text-white" : "text-gray-500 hover:text-purple-700 font-medium"
-                      }`}
-                    >
-                      Collections
-                    </button>
-                    <span className={isDark ? "text-gray-600" : "text-gray-400"}>/</span>
-                    <span className={`font-semibold ${isDark ? "text-gray-200" : "text-gray-900 font-bold"}`}>
-                      {selectedCollection.title}
-                    </span>
-                  </div>
-                ) : (
-                  "Collections"
-                )
-              : activeTab === "tags"
-              ? "Tags"
-              : activeTab === "favorites"
-              ? "Favorites"
-              : activeTab === "settings"
-              ? "Settings"
-              : undefined
-          }
-          onOpenTree={() => setIsTreeDrawerOpen(true)}
-        />
+        {(() => {
+          const isViewingAllCollections =
+            activeTab === "collections" && !selectedCollection && currentWorkspace === "personal";
+
+          return (
+            <TopBar
+              onHamburgerClick={() => {
+                toggleSidebar();
+                setPreviewOpen(false);
+              }}
+              onHamburgerMouseEnter={handleHamburgerMouseEnter}
+              onHamburgerMouseLeave={handleHamburgerMouseLeave}
+              isSidebarOpen={sidebarOpen}
+              onAddMemory={() => setModalOpen(true)}
+              onShareBrain={handleShare}
+              searchQuery={searchQuery}
+              onSearchChange={isViewingAllCollections ? undefined : setSearchQuery}
+              activeFilter={typeFilter}
+              onFilterChange={isViewingAllCollections ? undefined : setTypeFilter}
+              filterCounts={filterCounts}
+              isDark={isDark}
+              title={
+                currentWorkspace !== "personal" && sharedWorkspaceData
+                  ? `${sharedWorkspaceData.username}'s Brain`
+                  : activeTab === "collections"
+                    ? selectedCollection ? (
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => navigateToCollection(null)}
+                          className={`transition-colors cursor-pointer ${isDark ? "text-gray-400 hover:text-white" : "text-gray-500 hover:text-purple-700 font-medium"
+                            }`}
+                        >
+                          Collections
+                        </button>
+                        <span className={isDark ? "text-gray-600" : "text-gray-400"}>/</span>
+                        <span className={`font-semibold ${isDark ? "text-gray-200" : "text-gray-900 font-bold"}`}>
+                          {selectedCollection.title}
+                        </span>
+                      </div>
+                    ) : (
+                      "Collections"
+                    )
+                    : undefined
+              }
+              onOpenTree={isViewingAllCollections ? undefined : () => setIsTreeDrawerOpen(true)}
+            />
+          );
+        })()}
 
         {/* Viewport Canvas */}
         <main className="flex-1 w-full h-full overflow-y-auto p-6 sm:p-10 relative">
@@ -591,11 +655,10 @@ export function Dashboard() {
                       <button
                         type="button"
                         onClick={() => navigateToCollection(null)}
-                        className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 border ${
-                          isDark
-                            ? "bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 hover:text-purple-300 border-purple-500/20"
-                            : "bg-purple-50 hover:bg-purple-100 text-purple-700 hover:text-purple-800 border-purple-200 shadow-xs"
-                        }`}
+                        className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 border ${isDark
+                          ? "bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 hover:text-purple-300 border-purple-500/20"
+                          : "bg-purple-50 hover:bg-purple-100 text-purple-700 hover:text-purple-800 border-purple-200 shadow-xs"
+                          }`}
                       >
                         <CollectionIcon icon={DEFAULT_COLLECTION_ICON} className="w-3.5 h-3.5" />
                         <span>All Collections</span>
@@ -607,11 +670,10 @@ export function Dashboard() {
                           <div key={crumb._id} className="flex items-center gap-1.5">
                             <span className={isDark ? "text-gray-500 text-xs" : "text-gray-400 text-xs font-bold"}>/</span>
                             {isCurrent ? (
-                              <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold shadow-xs ${
-                                isDark
-                                  ? "bg-purple-500/15 border-purple-500/25 text-white"
-                                  : "bg-purple-100 border-purple-300 text-purple-950 font-extrabold"
-                              }`}>
+                              <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold shadow-xs ${isDark
+                                ? "bg-purple-500/15 border-purple-500/25 text-white"
+                                : "bg-purple-100 border-purple-300 text-purple-950 font-extrabold"
+                                }`}>
                                 <CollectionIcon icon={crumb.icon} className="w-4 h-4" />
                                 <span>{crumb.title}</span>
                               </div>
@@ -619,9 +681,8 @@ export function Dashboard() {
                               <button
                                 type="button"
                                 onClick={() => navigateToCollection(crumb)}
-                                className={`text-xs font-semibold transition-colors cursor-pointer hover:underline px-1.5 py-1 ${
-                                  isDark ? "text-gray-400 hover:text-purple-300" : "text-gray-600 hover:text-purple-700"
-                                }`}
+                                className={`text-xs font-semibold transition-colors cursor-pointer hover:underline px-1.5 py-1 ${isDark ? "text-gray-400 hover:text-purple-300" : "text-gray-600 hover:text-purple-700"
+                                  }`}
                               >
                                 {crumb.title}
                               </button>
@@ -638,9 +699,8 @@ export function Dashboard() {
                           setSharingCollection(selectedCollection);
                           setIsShareCollectionModalOpen(true);
                         }}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all flex items-center gap-1.5 cursor-pointer ${
-                          isDark ? "border-white/10 hover:bg-white/10 text-gray-300" : "border-gray-200 hover:bg-gray-100 text-gray-700"
-                        }`}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all flex items-center gap-1.5 cursor-pointer ${isDark ? "border-white/10 hover:bg-white/10 text-gray-300" : "border-gray-200 hover:bg-gray-100 text-gray-700"
+                          }`}
                       >
                         <span>🔗</span>
                         <span>{selectedCollection.shareHash ? "Shared" : "Share"}</span>
@@ -677,8 +737,8 @@ export function Dashboard() {
                               key={sub._id}
                               onClick={() => navigateToCollection(sub)}
                               className={`p-3 rounded-2xl border transition-all duration-200 cursor-pointer flex items-center gap-2.5 group select-none shadow-sm ${isDark
-                                  ? "bg-[#18181b]/90 border-white/10 hover:border-purple-500/50 hover:bg-[#202024] hover:shadow-lg"
-                                  : "bg-white border-gray-200 hover:border-purple-400 hover:shadow-md"
+                                ? "bg-[#18181b]/90 border-white/10 hover:border-purple-500/50 hover:bg-[#202024] hover:shadow-lg"
+                                : "bg-white border-gray-200 hover:border-purple-400 hover:shadow-md"
                                 }`}
                             >
                               <div className="w-9 h-9 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform p-1.5">
@@ -727,46 +787,221 @@ export function Dashboard() {
                   />
                 )
               ) : (
-                <div
-                  className="grid gap-6 items-start transition-all duration-300"
-                  style={{
-                    gridTemplateColumns: `repeat(${numCols}, minmax(0, 1fr))`
-                  }}
-                >
-                  {columns.map((colItems, colIdx) => (
-                    <div key={colIdx} className="flex flex-col gap-6">
-                      {colItems.map(({ _id, type, link, title, description, collectionId }) => (
-                        <div
-                          key={_id}
-                          id={`card-${_id}`}
-                          className={`transition-all duration-500 rounded-2xl ${
-                            highlightedCardId === _id
-                              ? "ring-4 ring-purple-500 shadow-[0_0_35px_rgba(168,85,247,0.7)] scale-[1.02] animate-pulse"
-                              : ""
+                <>
+                  <div
+                    className="grid gap-6 items-start"
+                    style={{
+                      gridTemplateColumns: `repeat(${numCols}, minmax(0, 1fr))`
+                    }}
+                  >
+                    {paginatedContents.map((item) => (
+                      <div
+                        key={item._id}
+                        id={`card-${item._id}`}
+                        style={{ viewTransitionName: `card-${item._id}` }}
+                        className={`rounded-2xl ${highlightedCardId === item._id
+                          ? "ring-4 ring-purple-500 shadow-[0_0_35px_rgba(168,85,247,0.7)] scale-[1.02] animate-pulse"
+                          : ""
                           }`}
-                        >
-                          <Card
-                            _id={_id}
-                            type={type}
-                            link={link}
-                            title={title}
-                            description={description}
-                            collectionId={collectionId}
-                            collections={collections}
-                            onMoveCollection={handleMoveCollection}
-                            onDelete={handleDelete}
-                            onCopyToast={showToast}
-                            isDark={isDark}
-                          />
-                        </div>
-                      ))}
+                      >
+                        <Card
+                          _id={item._id}
+                          type={item.type}
+                          link={item.link}
+                          title={item.title}
+                          description={item.description}
+                          collectionId={item.collectionId}
+                          collections={collections}
+                          onMoveCollection={handleMoveCollection}
+                          onDelete={handleDelete}
+                          onCopyToast={showToast}
+                          isDark={isDark}
+                          selectable={isSelectMode}
+                          selected={selectedIds.includes(item._id)}
+                          onToggleSelect={handleToggleSelect}
+                          onStartSelect={handleStartSelect}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+
+              {/* 5-Row Pagination Controls (Cards Only) */}
+              {filteredContents.length > 0 && totalPages > 1 && (
+                <div
+                  className={`mt-6 pt-5 pb-4 border-t flex flex-col sm:flex-row items-center justify-between gap-4 select-none ${isDark ? "border-white/10 text-gray-400" : "border-gray-200 text-gray-600"
+                    }`}
+                >
+                  <div className="text-xs font-medium">
+                    Showing{" "}
+                    <span className={isDark ? "text-gray-200 font-bold" : "text-gray-900 font-bold"}>
+                      {startIndex + 1}–{Math.min(startIndex + itemsPerPage, sortedContents.length)}
+                    </span>{" "}
+                    of{" "}
+                    <span className={isDark ? "text-gray-200 font-bold" : "text-gray-900 font-bold"}>
+                      {sortedContents.length}
+                    </span>{" "}
+                    cards
+                  </div>
+
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      disabled={safeCurrentPage <= 1}
+                      onClick={() => {
+                        setCurrentPage((p) => Math.max(1, p - 1));
+                        document.querySelector("main")?.scrollTo({ top: 0, behavior: "smooth" });
+                      }}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer flex items-center gap-1 disabled:opacity-30 disabled:cursor-not-allowed ${isDark
+                        ? "border-white/10 hover:bg-white/10 text-gray-300 disabled:hover:bg-transparent"
+                        : "border-gray-200 hover:bg-gray-100 text-gray-700 disabled:hover:bg-transparent"
+                        }`}
+                    >
+                      ← Prev
+                    </button>
+
+                    {/* Page Numbers */}
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: totalPages }, (_, i) => i + 1)
+                        .filter((p) => p === 1 || p === totalPages || Math.abs(p - safeCurrentPage) <= 1)
+                        .reduce<(number | string)[]>((acc, p, idx, arr) => {
+                          if (idx > 0 && p - (arr[idx - 1] as number) > 1) {
+                            acc.push("...");
+                          }
+                          acc.push(p);
+                          return acc;
+                        }, [])
+                        .map((item, idx) => {
+                          if (typeof item === "string") {
+                            return (
+                              <span key={`dots-${idx}`} className="px-1 text-xs text-gray-500">
+                                ...
+                              </span>
+                            );
+                          }
+                          const isCurrent = item === safeCurrentPage;
+                          return (
+                            <button
+                              key={item}
+                              type="button"
+                              onClick={() => {
+                                setCurrentPage(item);
+                                document.querySelector("main")?.scrollTo({ top: 0, behavior: "smooth" });
+                              }}
+                              className={`w-8 h-8 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center ${isCurrent
+                                ? "bg-purple-600 text-white shadow-md shadow-purple-600/30"
+                                : isDark
+                                  ? "hover:bg-white/10 text-gray-400 hover:text-white"
+                                  : "hover:bg-gray-100 text-gray-600 hover:text-gray-900"
+                                }`}
+                            >
+                              {item}
+                            </button>
+                          );
+                        })}
                     </div>
-                  ))}
+
+                    <button
+                      type="button"
+                      disabled={safeCurrentPage >= totalPages}
+                      onClick={() => {
+                        setCurrentPage((p) => Math.min(totalPages, p + 1));
+                        document.querySelector("main")?.scrollTo({ top: 0, behavior: "smooth" });
+                      }}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer flex items-center gap-1 disabled:opacity-30 disabled:cursor-not-allowed ${isDark
+                        ? "border-white/10 hover:bg-white/10 text-gray-300 disabled:hover:bg-transparent"
+                        : "border-gray-200 hover:bg-gray-100 text-gray-700 disabled:hover:bg-transparent"
+                        }`}
+                    >
+                      Next →
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
           )}
         </main>
+
+        {/* Apple & Notion Style Floating Bottom Selection Capsule */}
+        {isSelectMode && currentWorkspace === "personal" && (
+          <div className="fixed bottom-7 left-1/2 -translate-x-1/2 z-50 animate-in fade-in slide-in-from-bottom-5 duration-300 ease-out select-none">
+            <div
+              className={`flex items-center gap-3 sm:gap-4 px-4 sm:px-5 py-2.5 rounded-full border backdrop-blur-2xl transition-all ${
+                isDark
+                  ? "bg-[#1c1c1e]/85 border-white/[0.12] text-gray-200 shadow-[0_20px_50px_rgba(0,0,0,0.75),0_4px_16px_rgba(0,0,0,0.5)]"
+                  : "bg-white/85 border-black/[0.08] text-gray-800 shadow-[0_16px_40px_rgba(0,0,0,0.14),0_2px_8px_rgba(0,0,0,0.06)]"
+              }`}
+            >
+              {/* Count Indicator Pill */}
+              <div className="flex items-center gap-2">
+                <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold font-mono tracking-tight ${
+                  isDark ? "bg-purple-500/20 text-purple-300 border border-purple-500/30" : "bg-purple-100 text-purple-800 border border-purple-200"
+                }`}>
+                  {selectedIds.length} selected
+                </span>
+              </div>
+
+              {/* Select All Toggle Button */}
+              <button
+                type="button"
+                onClick={handleSelectAllVisible}
+                className={`px-2.5 py-1 rounded-full text-xs font-medium transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 ${
+                  isDark
+                    ? "text-gray-300 hover:text-white hover:bg-white/10"
+                    : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+                }`}
+              >
+                <svg className="w-3.5 h-3.5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  {paginatedContents.length > 0 && paginatedContents.every((c) => selectedIds.includes(c._id)) ? (
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
+                  ) : (
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                  )}
+                </svg>
+                <span>
+                  {paginatedContents.length > 0 && paginatedContents.every((c) => selectedIds.includes(c._id))
+                    ? "Deselect Page"
+                    : "Select Page"}
+                </span>
+              </button>
+
+              {/* Apple Hairline Divider */}
+              <div className={`h-4 w-px ${isDark ? "bg-white/15" : "bg-gray-200"}`} />
+
+              {/* Actions: Delete & Done */}
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <button
+                  type="button"
+                  disabled={selectedIds.length === 0 || isBulkDeleting}
+                  onClick={handleBulkDelete}
+                  className="px-3 py-1.5 rounded-full text-xs font-medium transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed text-red-500 hover:bg-red-500/10"
+                  title="Delete Selected Memories"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                  <span>{isBulkDeleting ? "Deleting..." : "Delete"}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsSelectMode(false);
+                    setSelectedIds([]);
+                  }}
+                  className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer active:scale-95 shadow-xs ${
+                    isDark
+                      ? "bg-white text-gray-900 hover:bg-gray-100"
+                      : "bg-gray-900 text-white hover:bg-gray-800"
+                  }`}
+                >
+                  Done
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
       </div>
 
@@ -846,6 +1081,17 @@ export function Dashboard() {
           }
           setIsTreeDrawerOpen(false);
           setHighlightedCardId(item._id);
+
+          // Find the exact page this card lands on so it is rendered and highlighted
+          const destItems = sourceContents
+            .filter((c) => (item.collectionId ? c.collectionId === item.collectionId : true))
+            .sort((a, b) => (a._id > b._id ? 1 : a._id < b._id ? -1 : 0));
+          const itemIdx = destItems.findIndex((c) => c._id === item._id);
+          if (itemIdx !== -1) {
+            const targetPage = Math.floor(itemIdx / itemsPerPage) + 1;
+            setCurrentPage(targetPage);
+          }
+
           setTimeout(() => {
             const el = document.getElementById(`card-${item._id}`);
             el?.scrollIntoView({ behavior: "smooth", block: "center" });
