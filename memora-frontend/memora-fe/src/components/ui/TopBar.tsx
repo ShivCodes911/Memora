@@ -26,6 +26,8 @@ export interface TopBarProps {
   onFilterChange?: (filterId: string) => void;
   filterCounts?: FilterCounts;
   onOpenTree?: () => void;
+  isSelectMode?: boolean;
+  onToggleSelectMode?: () => void;
 }
 
 const FILTER_OPTIONS = [
@@ -109,6 +111,8 @@ export function TopBar({
   onFilterChange,
   filterCounts,
   onOpenTree,
+  isSelectMode = false,
+  onToggleSelectMode,
 }: TopBarProps) {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const filterRef = useRef<HTMLDivElement>(null);
@@ -307,6 +311,26 @@ export function TopBar({
               <path d="M2 10h20" />
             </svg>
             <span className="hidden sm:inline">Tree</span>
+          </button>
+        )}
+
+        {onToggleSelectMode && (
+          <button
+            type="button"
+            onClick={onToggleSelectMode}
+            className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer border flex items-center gap-1.5 active:scale-95 ${
+              isSelectMode
+                ? "bg-purple-600 text-white border-purple-600 shadow-sm"
+                : isDark
+                  ? "bg-[#202020] hover:bg-[#262626] text-gray-300 hover:text-white border-white/5"
+                  : "bg-white hover:bg-gray-50 text-gray-700 hover:text-gray-900 border-gray-200 shadow-sm"
+            }`}
+            title="Toggle Select Mode"
+          >
+            <svg className={`w-3.5 h-3.5 ${isSelectMode ? "text-white" : "text-purple-400"}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+            </svg>
+            <span className="hidden sm:inline">{isSelectMode ? "Selecting" : "Select"}</span>
           </button>
         )}
 

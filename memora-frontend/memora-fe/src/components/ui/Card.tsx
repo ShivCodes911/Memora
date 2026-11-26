@@ -45,6 +45,7 @@ interface LinkMetadata {
     image: string;
     favicon: string;
     domain: string;
+    duration?: string;
 }
 
 function getYouTubeEmbedUrl(link: string) {
@@ -636,10 +637,10 @@ export const Card = ({
                     : "bg-white border-gray-200/80 text-gray-800"
                 } ${selectable && selected ? (isDark ? "ring-2 ring-purple-500 bg-purple-500/10" : "ring-2 ring-purple-600 bg-purple-50/50") : ""}`}>
                 {/* Card Header (pinned and always visible) */}
-                <div className={`flex items-center justify-between gap-2 shrink-0 pb-2.5 border-b ${
-                    isDark ? "border-white/10" : "border-gray-100"
+                <div className={`flex items-center justify-between gap-2 shrink-0 pb-2 border-b ${
+                    isDark ? "border-white/[0.06]" : "border-gray-100"
                 }`}>
-                    <div className="flex items-center gap-2 min-w-0">
+                    <div className="flex items-center gap-2.5 min-w-0">
                         {selectable && (
                             <button
                                 type="button"
@@ -672,7 +673,9 @@ export const Card = ({
                                     height="16"
                                     src="https://img.icons8.com/softteal-line/24/video.png"
                                     alt="video"
-                                    className="w-4 h-4 object-contain brightness-110"
+                                    className={`w-4 h-4 object-contain ${
+                                        isDark ? "brightness-0 invert" : "brightness-110"
+                                    }`}
                                 />
                             )}
                             {effectiveType === "twitter" && (
@@ -713,7 +716,7 @@ export const Card = ({
                         </div>
 
                         {/* Clean Lowercase Domain */}
-                        <span className={`text-[11px] font-medium lowercase truncate ${isDark ? "text-gray-400" : "text-gray-500"}`}>
+                        <span className={`text-[11px] font-medium lowercase truncate tracking-tight ${isDark ? "text-gray-400/80" : "text-gray-400"}`}>
                             {cleanDomain}
                         </span>
 
@@ -943,11 +946,12 @@ export const Card = ({
                     {(effectiveType === "youtube" || effectiveType === "video") && (
                         <div className="flex flex-col gap-2.5 w-full flex-1 min-h-0 justify-between">
                             <div className="flex flex-col gap-2 min-h-0 flex-1">
-                                {/* 1. Video Thumbnail / Preview */}
+                                {/* 1. Video Thumbnail / Preview (126px when note exists, 142px when empty) */}
                                 <div
                                     onClick={() => setPlayerOpen(true)}
-                                    className={`relative w-full rounded-xl overflow-hidden bg-black/60 border border-white/10 group/thumb cursor-pointer shadow-md transition-all duration-300 flex-1 ${descText ? "min-h-[80px] max-h-[95px]" : "min-h-[110px] max-h-[130px]"
-                                        }`}
+                                    className={`relative w-full rounded-xl overflow-hidden bg-black/80 border border-white/10 group/thumb cursor-pointer shadow-md transition-all duration-300 shrink-0 ${
+                                        descText ? "h-[126px]" : "h-[142px]"
+                                    }`}
                                 >
                                     {effectiveType === "youtube" && ytThumbnailUrl && !thumbError ? (
                                         <img
@@ -978,38 +982,54 @@ export const Card = ({
                                         </div>
                                     )}
 
-                                    {/* Play Button Overlay */}
-                                    <div className="absolute inset-0 bg-black/20 group-hover/thumb:bg-black/50 transition-colors flex items-center justify-center">
-                                        <div className={`rounded-xl ${effectiveType === "video" ? "bg-emerald-600/90" : "bg-red-600/90"} text-white flex items-center justify-center shadow-lg transition-all duration-300 group-hover/thumb:scale-110 ${descText ? "w-8 h-8" : "w-10 h-10"
-                                            }`}>
-                                            <svg className={`${descText ? "w-3.5 h-3.5" : "w-4 h-4"} fill-current ml-0.5`} viewBox="0 0 24 24">
+                                    {/* Subtle Hover Dark Overlay & Centered Play Button */}
+                                    <div className="absolute inset-0 bg-black/20 group-hover/thumb:bg-black/45 transition-colors flex items-center justify-center">
+                                        <div className={`rounded-xl ${
+                                            effectiveType === "video" ? "bg-emerald-600/90" : "bg-red-600/90"
+                                        } text-white flex items-center justify-center shadow-lg transition-all duration-300 group-hover/thumb:scale-110 w-9 h-9`}>
+                                            <svg className="w-4 h-4 fill-current ml-0.5" viewBox="0 0 24 24">
                                                 <path d="M8 5v14l11-7z" />
                                             </svg>
                                         </div>
                                     </div>
+
+                                    {/* Duration Badge (if metadata provides duration) */}
+                                    {metadata?.duration && (
+                                        <span className="absolute bottom-1.5 right-1.5 px-1.5 py-0.5 rounded-md bg-black/80 text-white text-[10px] font-mono font-medium backdrop-blur-xs">
+                                            {metadata.duration}
+                                        </span>
+                                    )}
                                 </div>
 
-                                {/* 2. Video Title */}
-                                <h4 className={`text-xs font-bold truncate shrink-0 tracking-tight ${isDark ? "text-gray-100" : "text-gray-800"}`} title={title}>
+                                {/* 2. Video Title: 2-line clamp for full context without mid-word cutoffs */}
+                                <h4
+                                    className={`text-[13px] font-semibold line-clamp-2 shrink-0 tracking-tight leading-snug ${
+                                        isDark ? "text-gray-100" : "text-gray-900"
+                                    }`}
+                                    title={title}
+                                >
                                     {title}
                                 </h4>
 
-                                {/* 3. Action Buttons Row */}
-                                <div className="flex items-center gap-2 shrink-0 mb-0.5">
+                                {/* 3. Action Buttons Row: Consistent h-7.5 height, Red Watch + Ghost Open */}
+                                <div className="flex items-center gap-2 shrink-0">
                                     <button
                                         type="button"
                                         onClick={() => setPlayerOpen(true)}
-                                        className="flex-1 py-1 px-2.5 rounded-lg bg-red-600 hover:bg-red-700 active:scale-95 text-white text-[11px] font-bold transition-all flex items-center justify-center gap-1 shadow-xs cursor-pointer"
+                                        className="flex-1 h-7.5 px-3 rounded-lg bg-red-600 hover:bg-red-700 active:scale-95 text-white text-xs font-semibold transition-all flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
                                     >
-                                        <span>▶</span>
+                                        <span className="text-[10px]">▶</span>
                                         <span>Watch Video</span>
                                     </button>
                                     <a
                                         href={link}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        className={`py-1 px-2.5 rounded-lg active:scale-95 text-[11px] font-semibold transition-all flex items-center gap-1 cursor-pointer border ${isDark ? "bg-white/10 hover:bg-white/20 text-gray-200 border-transparent" : "bg-white hover:bg-gray-50 text-gray-700 border-gray-200 shadow-xs"
-                                            }`}
+                                        className={`h-7.5 px-3 rounded-lg active:scale-95 text-xs font-medium transition-all flex items-center gap-1.5 cursor-pointer border ${
+                                            isDark
+                                                ? "bg-white/[0.04] hover:bg-white/10 text-gray-300 hover:text-white border-white/10"
+                                                : "bg-transparent hover:bg-gray-100 text-gray-600 hover:text-gray-900 border-gray-200"
+                                        }`}
                                         title="Open Original Link"
                                     >
                                         <span>Open</span>
@@ -1018,13 +1038,13 @@ export const Card = ({
                                             height="24"
                                             src="https://img.icons8.com/material-outlined/24/external-link.png"
                                             alt="external-link"
-                                            className={`w-3.5 h-3.5 object-contain ${isDark ? "invert opacity-85" : "opacity-75"}`}
+                                            className={`w-3.5 h-3.5 object-contain ${isDark ? "invert opacity-75" : "opacity-60"}`}
                                         />
                                     </a>
                                 </div>
                             </div>
 
-                            {/* 4. Read-only note or placeholder (proper box with all borders & padding intact) */}
+                            {/* 4. Read-only note or placeholder (Preserved exactly as current) */}
                             <div className="pt-1.5 shrink-0">
                                 {renderReadOnlyNote()}
                             </div>

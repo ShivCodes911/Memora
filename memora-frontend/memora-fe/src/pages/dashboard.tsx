@@ -563,14 +563,13 @@ export function Dashboard() {
             currentWorkspace !== "personal" && sharedWorkspaceData
               ? `${sharedWorkspaceData.username}'s Brain`
               : activeTab === "collections"
-              ? selectedCollection ? (
+                ? selectedCollection ? (
                   <div className="flex items-center gap-1.5">
                     <button
                       type="button"
                       onClick={() => navigateToCollection(null)}
-                      className={`transition-colors cursor-pointer ${
-                        isDark ? "text-gray-400 hover:text-white" : "text-gray-500 hover:text-purple-700 font-medium"
-                      }`}
+                      className={`transition-colors cursor-pointer ${isDark ? "text-gray-400 hover:text-white" : "text-gray-500 hover:text-purple-700 font-medium"
+                        }`}
                     >
                       Collections
                     </button>
@@ -582,13 +581,13 @@ export function Dashboard() {
                 ) : (
                   "Collections"
                 )
-              : activeTab === "tags"
-              ? "Tags"
-              : activeTab === "favorites"
-              ? "Favorites"
-              : activeTab === "settings"
-              ? "Settings"
-              : undefined
+                : activeTab === "tags"
+                  ? "Tags"
+                  : activeTab === "favorites"
+                    ? "Favorites"
+                    : activeTab === "settings"
+                      ? "Settings"
+                      : undefined
           }
           onOpenTree={() => setIsTreeDrawerOpen(true)}
         />
@@ -684,11 +683,10 @@ export function Dashboard() {
                       <button
                         type="button"
                         onClick={() => navigateToCollection(null)}
-                        className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 border ${
-                          isDark
-                            ? "bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 hover:text-purple-300 border-purple-500/20"
-                            : "bg-purple-50 hover:bg-purple-100 text-purple-700 hover:text-purple-800 border-purple-200 shadow-xs"
-                        }`}
+                        className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 border ${isDark
+                          ? "bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 hover:text-purple-300 border-purple-500/20"
+                          : "bg-purple-50 hover:bg-purple-100 text-purple-700 hover:text-purple-800 border-purple-200 shadow-xs"
+                          }`}
                       >
                         <CollectionIcon icon={DEFAULT_COLLECTION_ICON} className="w-3.5 h-3.5" />
                         <span>All Collections</span>
@@ -700,11 +698,10 @@ export function Dashboard() {
                           <div key={crumb._id} className="flex items-center gap-1.5">
                             <span className={isDark ? "text-gray-500 text-xs" : "text-gray-400 text-xs font-bold"}>/</span>
                             {isCurrent ? (
-                              <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold shadow-xs ${
-                                isDark
-                                  ? "bg-purple-500/15 border-purple-500/25 text-white"
-                                  : "bg-purple-100 border-purple-300 text-purple-950 font-extrabold"
-                              }`}>
+                              <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold shadow-xs ${isDark
+                                ? "bg-purple-500/15 border-purple-500/25 text-white"
+                                : "bg-purple-100 border-purple-300 text-purple-950 font-extrabold"
+                                }`}>
                                 <CollectionIcon icon={crumb.icon} className="w-4 h-4" />
                                 <span>{crumb.title}</span>
                               </div>
@@ -712,9 +709,8 @@ export function Dashboard() {
                               <button
                                 type="button"
                                 onClick={() => navigateToCollection(crumb)}
-                                className={`text-xs font-semibold transition-colors cursor-pointer hover:underline px-1.5 py-1 ${
-                                  isDark ? "text-gray-400 hover:text-purple-300" : "text-gray-600 hover:text-purple-700"
-                                }`}
+                                className={`text-xs font-semibold transition-colors cursor-pointer hover:underline px-1.5 py-1 ${isDark ? "text-gray-400 hover:text-purple-300" : "text-gray-600 hover:text-purple-700"
+                                  }`}
                               >
                                 {crumb.title}
                               </button>
@@ -731,9 +727,8 @@ export function Dashboard() {
                           setSharingCollection(selectedCollection);
                           setIsShareCollectionModalOpen(true);
                         }}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all flex items-center gap-1.5 cursor-pointer ${
-                          isDark ? "border-white/10 hover:bg-white/10 text-gray-300" : "border-gray-200 hover:bg-gray-100 text-gray-700"
-                        }`}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all flex items-center gap-1.5 cursor-pointer ${isDark ? "border-white/10 hover:bg-white/10 text-gray-300" : "border-gray-200 hover:bg-gray-100 text-gray-700"
+                          }`}
                       >
                         <span>🔗</span>
                         <span>{selectedCollection.shareHash ? "Shared" : "Share"}</span>
@@ -770,8 +765,8 @@ export function Dashboard() {
                               key={sub._id}
                               onClick={() => navigateToCollection(sub)}
                               className={`p-3 rounded-2xl border transition-all duration-200 cursor-pointer flex items-center gap-2.5 group select-none shadow-sm ${isDark
-                                  ? "bg-[#18181b]/90 border-white/10 hover:border-purple-500/50 hover:bg-[#202024] hover:shadow-lg"
-                                  : "bg-white border-gray-200 hover:border-purple-400 hover:shadow-md"
+                                ? "bg-[#18181b]/90 border-white/10 hover:border-purple-500/50 hover:bg-[#202024] hover:shadow-lg"
+                                : "bg-white border-gray-200 hover:border-purple-400 hover:shadow-md"
                                 }`}
                             >
                               <div className="w-9 h-9 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform p-1.5">
@@ -821,79 +816,6 @@ export function Dashboard() {
                 )
               ) : (
                 <>
-                  {/* Bulk Selection Toolbar */}
-                  {currentWorkspace === "personal" && filteredContents.length > 0 && (
-                    <div className={`flex items-center justify-between p-3 rounded-2xl border transition-all ${
-                      isDark ? "bg-[#18181b] border-white/10" : "bg-gray-50 border-gray-200"
-                    }`}>
-                      {!isSelectMode ? (
-                        <div className="flex items-center justify-between w-full">
-                          <span className="text-xs text-gray-400 font-medium">
-                            {filteredContents.length} {filteredContents.length === 1 ? "memory" : "memories"} in view
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => setIsSelectMode(true)}
-                            className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all flex items-center gap-1.5 cursor-pointer ${
-                              isDark
-                                ? "border-white/10 hover:bg-white/10 text-gray-300"
-                                : "border-gray-200 hover:bg-white text-gray-700 shadow-xs"
-                            }`}
-                          >
-                            <svg className="w-3.5 h-3.5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-                            </svg>
-                            <span>Select Notes</span>
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="flex items-center justify-between w-full flex-wrap gap-2">
-                          <div className="flex items-center gap-3">
-                            <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold select-none">
-                              <input
-                                type="checkbox"
-                                checked={
-                                  paginatedContents.length > 0 &&
-                                  paginatedContents.every((c) => selectedIds.includes(c._id))
-                                }
-                                onChange={handleSelectAllVisible}
-                                className="w-4 h-4 rounded text-purple-600 cursor-pointer accent-purple-600"
-                              />
-                              <span>Select All Visible</span>
-                            </label>
-                            <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-purple-500/15 text-purple-400 border border-purple-500/20">
-                              {selectedIds.length} selected
-                            </span>
-                          </div>
-
-                          <div className="flex items-center gap-2">
-                            <button
-                              type="button"
-                              disabled={selectedIds.length === 0 || isBulkDeleting}
-                              onClick={handleBulkDelete}
-                              className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-red-600 hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed text-white transition-all shadow-sm flex items-center gap-1.5 cursor-pointer"
-                            >
-                              <span>🗑️</span>
-                              <span>{isBulkDeleting ? "Deleting..." : `Delete Selected (${selectedIds.length})`}</span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setIsSelectMode(false);
-                                setSelectedIds([]);
-                              }}
-                              className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
-                                isDark ? "border-white/10 hover:bg-white/10 text-gray-300" : "border-gray-200 hover:bg-gray-100 text-gray-700"
-                              }`}
-                            >
-                              Cancel
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
                   <div
                     className="grid gap-6 items-start"
                     style={{
@@ -905,11 +827,10 @@ export function Dashboard() {
                         key={item._id}
                         id={`card-${item._id}`}
                         style={{ viewTransitionName: `card-${item._id}` }}
-                        className={`rounded-2xl ${
-                          highlightedCardId === item._id
-                            ? "ring-4 ring-purple-500 shadow-[0_0_35px_rgba(168,85,247,0.7)] scale-[1.02] animate-pulse"
-                            : ""
-                        }`}
+                        className={`rounded-2xl ${highlightedCardId === item._id
+                          ? "ring-4 ring-purple-500 shadow-[0_0_35px_rgba(168,85,247,0.7)] scale-[1.02] animate-pulse"
+                          : ""
+                          }`}
                       >
                         <Card
                           _id={item._id}
@@ -937,9 +858,8 @@ export function Dashboard() {
               {/* 5-Row Pagination Controls (Cards Only) */}
               {filteredContents.length > 0 && totalPages > 1 && (
                 <div
-                  className={`mt-6 pt-5 pb-4 border-t flex flex-col sm:flex-row items-center justify-between gap-4 select-none ${
-                    isDark ? "border-white/10 text-gray-400" : "border-gray-200 text-gray-600"
-                  }`}
+                  className={`mt-6 pt-5 pb-4 border-t flex flex-col sm:flex-row items-center justify-between gap-4 select-none ${isDark ? "border-white/10 text-gray-400" : "border-gray-200 text-gray-600"
+                    }`}
                 >
                   <div className="text-xs font-medium">
                     Showing{" "}
@@ -961,11 +881,10 @@ export function Dashboard() {
                         setCurrentPage((p) => Math.max(1, p - 1));
                         document.querySelector("main")?.scrollTo({ top: 0, behavior: "smooth" });
                       }}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer flex items-center gap-1 disabled:opacity-30 disabled:cursor-not-allowed ${
-                        isDark
-                          ? "border-white/10 hover:bg-white/10 text-gray-300 disabled:hover:bg-transparent"
-                          : "border-gray-200 hover:bg-gray-100 text-gray-700 disabled:hover:bg-transparent"
-                      }`}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer flex items-center gap-1 disabled:opacity-30 disabled:cursor-not-allowed ${isDark
+                        ? "border-white/10 hover:bg-white/10 text-gray-300 disabled:hover:bg-transparent"
+                        : "border-gray-200 hover:bg-gray-100 text-gray-700 disabled:hover:bg-transparent"
+                        }`}
                     >
                       ← Prev
                     </button>
@@ -998,13 +917,12 @@ export function Dashboard() {
                                 setCurrentPage(item);
                                 document.querySelector("main")?.scrollTo({ top: 0, behavior: "smooth" });
                               }}
-                              className={`w-8 h-8 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center ${
-                                isCurrent
-                                  ? "bg-purple-600 text-white shadow-md shadow-purple-600/30"
-                                  : isDark
+                              className={`w-8 h-8 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center ${isCurrent
+                                ? "bg-purple-600 text-white shadow-md shadow-purple-600/30"
+                                : isDark
                                   ? "hover:bg-white/10 text-gray-400 hover:text-white"
                                   : "hover:bg-gray-100 text-gray-600 hover:text-gray-900"
-                              }`}
+                                }`}
                             >
                               {item}
                             </button>
@@ -1019,11 +937,10 @@ export function Dashboard() {
                         setCurrentPage((p) => Math.min(totalPages, p + 1));
                         document.querySelector("main")?.scrollTo({ top: 0, behavior: "smooth" });
                       }}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer flex items-center gap-1 disabled:opacity-30 disabled:cursor-not-allowed ${
-                        isDark
-                          ? "border-white/10 hover:bg-white/10 text-gray-300 disabled:hover:bg-transparent"
-                          : "border-gray-200 hover:bg-gray-100 text-gray-700 disabled:hover:bg-transparent"
-                      }`}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer flex items-center gap-1 disabled:opacity-30 disabled:cursor-not-allowed ${isDark
+                        ? "border-white/10 hover:bg-white/10 text-gray-300 disabled:hover:bg-transparent"
+                        : "border-gray-200 hover:bg-gray-100 text-gray-700 disabled:hover:bg-transparent"
+                        }`}
                     >
                       Next →
                     </button>
@@ -1033,6 +950,86 @@ export function Dashboard() {
             </div>
           )}
         </main>
+
+        {/* Apple & Notion Style Floating Bottom Selection Capsule */}
+        {isSelectMode && currentWorkspace === "personal" && (
+          <div className="fixed bottom-7 left-1/2 -translate-x-1/2 z-50 animate-in fade-in slide-in-from-bottom-5 duration-300 ease-out select-none">
+            <div
+              className={`flex items-center gap-3 sm:gap-4 px-4 sm:px-5 py-2.5 rounded-full border backdrop-blur-2xl transition-all ${
+                isDark
+                  ? "bg-[#1c1c1e]/85 border-white/[0.12] text-gray-200 shadow-[0_20px_50px_rgba(0,0,0,0.75),0_4px_16px_rgba(0,0,0,0.5)]"
+                  : "bg-white/85 border-black/[0.08] text-gray-800 shadow-[0_16px_40px_rgba(0,0,0,0.14),0_2px_8px_rgba(0,0,0,0.06)]"
+              }`}
+            >
+              {/* Count Indicator Pill */}
+              <div className="flex items-center gap-2">
+                <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold font-mono tracking-tight ${
+                  isDark ? "bg-purple-500/20 text-purple-300 border border-purple-500/30" : "bg-purple-100 text-purple-800 border border-purple-200"
+                }`}>
+                  {selectedIds.length} selected
+                </span>
+              </div>
+
+              {/* Select All Toggle Button */}
+              <button
+                type="button"
+                onClick={handleSelectAllVisible}
+                className={`px-2.5 py-1 rounded-full text-xs font-medium transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 ${
+                  isDark
+                    ? "text-gray-300 hover:text-white hover:bg-white/10"
+                    : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+                }`}
+              >
+                <svg className="w-3.5 h-3.5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  {paginatedContents.length > 0 && paginatedContents.every((c) => selectedIds.includes(c._id)) ? (
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
+                  ) : (
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                  )}
+                </svg>
+                <span>
+                  {paginatedContents.length > 0 && paginatedContents.every((c) => selectedIds.includes(c._id))
+                    ? "Deselect Page"
+                    : "Select Page"}
+                </span>
+              </button>
+
+              {/* Apple Hairline Divider */}
+              <div className={`h-4 w-px ${isDark ? "bg-white/15" : "bg-gray-200"}`} />
+
+              {/* Actions: Delete & Done */}
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <button
+                  type="button"
+                  disabled={selectedIds.length === 0 || isBulkDeleting}
+                  onClick={handleBulkDelete}
+                  className="px-3 py-1.5 rounded-full text-xs font-medium transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed text-red-500 hover:bg-red-500/10"
+                  title="Delete Selected Memories"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                  <span>{isBulkDeleting ? "Deleting..." : "Delete"}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsSelectMode(false);
+                    setSelectedIds([]);
+                  }}
+                  className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer active:scale-95 shadow-xs ${
+                    isDark
+                      ? "bg-white text-gray-900 hover:bg-gray-100"
+                      : "bg-gray-900 text-white hover:bg-gray-800"
+                  }`}
+                >
+                  Done
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
       </div>
 
